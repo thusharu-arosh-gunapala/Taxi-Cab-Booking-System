@@ -1,0 +1,11 @@
+RCP-8001|BK-501|PASS-201|Michael Scott|Terminal 1, JFK Airport|Manhattan Downtown Hotel|24.5|35.0|0.0|35.0|CASH|REFUNDED|2026-10-09 21:28:46
+RCP-8002|BK-502|PASS-202|James Bond|Central Station|West End Tech Hub|18.0|58.5|10.0|48.5|CARD|PAID|2026-10-09 21:28:46
+RCP-8003|BK-503|PASS-203|Elena Gilbert|Mystic Grill, Main St|Whittington Heights|8.2|22.0|0.0|22.0|ONLINE|PAID|2026-10-09 21:28:46
+RCP-8004|BK-LIFE-1|PASS-LIFE|Driver A|Loc A|Loc B|10.0|50.0|0.0|50.0|CASH|REFUNDED|2026-10-09 21:28:49
+RCP-8005|BK-DEMO-99|PASS-DEMO-99|Robert De Niro|Central Park West|Brooklyn Navy Yard|15.2|50.0|10.0|40.0|CASH|REFUNDED|2026-10-09 21:34:52
+RCP-8006|BK-7788|PASS-405|David Miller|Terminal 4, JFK Int'l Airport|Times Square, New York, NY|26.4|55.0|0.0|55.0|CASH|REFUNDED|2026-10-09 22:13:14
+RCP-8007|BK-7788|PASS-405|David Miller|Terminal 4, JFK Int'l Airport|Times Square, New York, NY|26.4|55.0|0.0|55.0|ONLINE|PAID|2026-10-09 22:13:49
+RCP-8008|BK-SIMPLIFIED-1|PASS-SIMPLIFIED-1|Alex Murphy|Times Square|Brooklyn DUMBO|14.2|60.0|12.0|48.0|CARD|PAID|2026-10-09 22:48:49
+RCP-8009|BK-7788|PASS-405|David Miller|Terminal 4, JFK Int'l Airport|Times Square, New York, NY|26.4|55.0|0.0|55.0|CARD|PAID|2026-10-10 00:37:57
+RCP-8010|BK-7788|PASS-405|David Miller|Terminal 4, JFK Int'l Airport|Times Square, New York, NY|26.4|55.0|0.0|55.0|CASH|PAID|2026-10-10 00:38:35
+RCP-8011|BK-7788|PASS-405|David Miller|Terminal 4, JFK Int'l Airport|Times Square, New York, NY|26.4|55.0|0.0|55.0|CASH|PAID|2026-10-10 11:58:31
