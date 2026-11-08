@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Taxi Cab Booking System  | Driver Details</title>
+    <style>
+        body { font-family: Arial; background: #f4f6fa; padding: 30px; }
+        .card { max-width: 500px; margin: auto; background: white; padding: 25px; border-radius: 10px; }
+        p { padding: 10px; border-bottom: 1px solid #eee; }
+        a { display: inline-block; padding: 10px 18px; background: #ffc629; color: #17243b; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Driver Details</h2>
+
+    <p><b>ID:</b> <span th:text="${driver.id}"></span></p>
+    <p><b>Name:</b> <span th:text="${driver.fullName}"></span></p>
+    <p><b>Email:</b> <span th:text="${driver.email}"></span></p>
+    <p><b>Phone:</b> <span th:text="${driver.phone}"></span></p>
+    <p><b>License:</b> <span th:text="${driver.licenseNumber}"></span></p>
+    <p><b>Approval:</b> <span th:text="${driver.approvalStatus}"></span></p>
+    <p><b>Status:</b>
+        <span th:text="${driver.online ? 'Online' : 'Offline'}"></span>
+    </p>
+
+    <h3>Assigned Vehicles</h3>
+    <ul>
+        <li th:each="vehicle : ${driver.vehicles}"
+            th:text="${vehicle.vehicleNumber + ' - ' + vehicle.category}">
+        </li>
+    </ul>
+
+    <a th:href="@{/drivers}">Back to Drivers</a>
+</div>
+
+</body>
+</html>

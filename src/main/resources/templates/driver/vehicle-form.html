@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Taxi Cab Booking System | Vehicle Form</title>
+    <style>
+        body { font-family: Arial; background: #f4f6fa; padding: 30px; }
+        .container { max-width: 500px; margin: auto; padding: 25px; background: white; border-radius: 10px; }
+        input, select { width: 100%; padding: 11px; margin: 8px 0 17px; box-sizing: border-box; }
+        label { font-weight: bold; }
+        button, a { padding: 11px 17px; background: #ffc629; color: #17243b; border: 0; border-radius: 5px; text-decoration: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2 th:text="${vehicle == null ? 'Add New Vehicle' : 'Update Vehicle'}">
+        Vehicle Form
+    </h2>
+
+    <form th:if="${vehicle == null}"
+          th:action="@{/vehicles/save}" method="post">
+
+        <label>Vehicle Category</label>
+        <select name="category" required>
+            <option value="">Select Category</option>
+            <option value="TUK_TUK">Tuk Tuk</option>
+            <option value="MINI">Mini</option>
+            <option value="CAR">Car</option>
+            <option value="VAN">Van</option>
+            <option value="PREMIUM">Premium</option>
+        </select>
+
+        <label>Vehicle Number</label>
+        <input type="text" name="vehicleNumber" required>
+
+        <label>Brand</label>
+        <input type="text" name="brand" required>
+
+        <label>Model</label>
+        <input type="text" name="vehicleModel" required>
+
+        <label>Number of Seats</label>
+        <input type="number" name="seats" min="1" required>
+
+        <label>Assign Driver</label>
+        <select name="driverId">
+            <option value="">No Driver Assigned</option>
+            <option th:each="driver : ${drivers}"
+                    th:value="${driver.id}"
+                    th:text="${driver.fullName}"
+                    th:if="${driver.approvalStatus == 'APPROVED'}">
+            </option>
+        </select>
+
+        <button type="submit">Save Vehicle</button>
+        <a th:href="@{/vehicles}">Cancel</a>
+    </form>
+
+    <form th:if="${vehicle != null}"
+          th:action="@{/vehicles/update/{id}(id=${vehicle.id})}"
+          method="post">
+
+        <label>Vehicle Category</label>
+        <select name="category" required>
+            <option value="TUK_TUK" th:selected="${vehicle.category == 'Tuk Tuk'}">Tuk Tuk</option>
+            <option value="MINI" th:selected="${vehicle.category == 'Mini'}">Mini</option>
+            <option value="CAR" th:selected="${vehicle.category == 'Car'}">Car</option>
+            <option value="VAN" th:selected="${vehicle.category == 'Van'}">Van</option>
+            <option value="PREMIUM" th:selected="${vehicle.category == 'Premium'}">Premium</option>
+        </select>
+
+        <label>Vehicle Number</label>
+        <input type="text" name="vehicleNumber"
+               th:value="${vehicle.vehicleNumber}" required>
+
+        <label>Brand</label>
+        <input type="text" name="brand"
+               th:value="${vehicle.brand}" required>
+
+        <label>Model</label>
+        <input type="text" name="vehicleModel"
+               th:value="${vehicle.model}" required>
+
+        <label>Number of Seats</label>
+        <input type="number" name="seats"
+               th:value="${vehicle.seats}" min="1" required>
+
+        <label>Availability</label>
+        <select name="available">
+            <option value="true" th:selected="${vehicle.available}">Available</option>
+            <option value="false" th:selected="${!vehicle.available}">Unavailable</option>
+        </select>
+
+        <label>Assign Driver</label>
+        <select name="driverId">
+            <option value="">No Driver Assigned</option>
+            <option th:each="driver : ${drivers}"
+                    th:value="${driver.id}"
+                    th:text="${driver.fullName}"
+                    th:selected="${vehicle.driver != null and vehicle.driver.id == driver.id}"
+                    th:if="${driver.approvalStatus == 'APPROVED' or (vehicle.driver != null and vehicle.driver.id == driver.id)}">
+            </option>
+        </select>
+
+        <button type="submit">Update Vehicle</button>
+        <a th:href="@{/vehicles}">Cancel</a>
+    </form>
+
+</div>
+
+</body>
+</html>

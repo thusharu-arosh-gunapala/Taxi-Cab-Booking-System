@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Taxi Cab Booking System  | Driver Form</title>
+    <style>
+        body { font-family: Arial; background: #f4f6fa; padding: 30px; }
+        .container { background: white; padding: 25px; max-width: 500px; margin: auto; border-radius: 10px; }
+        input { width: 100%; padding: 11px; margin: 9px 0 17px; box-sizing: border-box; }
+        button, a { padding: 11px 18px; background: #ffc629; color: #17243b; border: 0; text-decoration: none; cursor: pointer; border-radius: 5px; }
+        label { font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2 th:text="${pageTitle}">Driver Registration</h2>
+
+    <form th:action="${driver.id == null ? '/drivers/save' : '/drivers/update/' + driver.id}"
+          th:object="${driver}" method="post">
+
+        <label>Full Name</label>
+        <input type="text" th:field="*{fullName}" required>
+
+        <label>Email</label>
+        <input type="email" th:field="*{email}" required>
+
+        <label>Phone Number</label>
+        <input type="tel" th:field="*{phone}" required>
+
+        <label>Driving License Number</label>
+        <input type="text" th:field="*{licenseNumber}" required>
+
+        <button type="submit">Save Driver</button>
+        <a th:href="@{/drivers}">Cancel</a>
+
+    </form>
+</div>
+
+</body>
+</html>

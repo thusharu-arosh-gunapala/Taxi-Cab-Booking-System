@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Driver Management</title>
+    <style>
+        body { font-family: Arial; background: #f3f5f9; padding: 30px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; }
+        a, button { padding: 9px 14px; background: #17345c; color: white; text-decoration: none; border: 0; border-radius: 5px; cursor: pointer; }
+        .delete { background: #c0392b; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #edf1f7; }
+        form { display: inline; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Driver Management</h1>
+
+    <a th:href="@{/drivers/add}">Add New Driver</a>
+    <a th:href="@{/vehicles}">Manage Vehicles</a>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>License</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="driver : ${drivers}">
+            <td th:text="${driver.id}"></td>
+            <td th:text="${driver.fullName}"></td>
+            <td th:text="${driver.email}"></td>
+            <td th:text="${driver.phone}"></td>
+            <td th:text="${driver.licenseNumber}"></td>
+            <td>
+                <a th:href="@{/drivers/edit/{id}(id=${driver.id})}">Edit</a>
+
+                <form th:action="@{/drivers/delete/{id}(id=${driver.id})}"
+                      method="post">
+                    <button class="delete" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr th:if="${#lists.isEmpty(drivers)}">
+            <td colspan="6">No drivers available.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

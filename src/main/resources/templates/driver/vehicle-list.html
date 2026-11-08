@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Taxi Cab Booking System | Vehicle Management</title>
+    <style>
+        body { font-family: Arial; background: #f4f6fa; padding: 25px; }
+        h1 { color: #17243b; }
+        table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 13px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #17243b; color: white; }
+        .btn { padding: 9px 13px; background: #ffc629; color: #17243b; text-decoration: none; border: 0; border-radius: 5px; cursor: pointer; }
+        form { display: inline-block; }
+    </style>
+</head>
+<body>
+
+<h1>Taxi Cab Booking System  - Vehicle Management</h1>
+
+<a th:href="@{/vehicles/add}" class="btn">+ Add Vehicle</a>
+<a th:href="@{/drivers}" class="btn">Driver Management</a>
+
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Vehicle Number</th>
+        <th>Category</th>
+        <th>Brand</th>
+        <th>Model</th>
+        <th>Seats</th>
+        <th>Driver</th>
+        <th>Availability</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr th:each="vehicle : ${vehicles}">
+        <td th:text="${vehicle.id}"></td>
+        <td th:text="${vehicle.vehicleNumber}"></td>
+        <td th:text="${vehicle.category}"></td>
+        <td th:text="${vehicle.brand}"></td>
+        <td th:text="${vehicle.model}"></td>
+        <td th:text="${vehicle.seats}"></td>
+        <td th:text="${vehicle.driver != null ? vehicle.driver.fullName : 'Not Assigned'}"></td>
+        <td th:text="${vehicle.available ? 'Available' : 'Unavailable'}"></td>
+
+        <td>
+            <a class="btn"
+               th:href="@{/vehicles/edit/{id}(id=${vehicle.id})}">Edit</a>
+
+            <form th:action="@{/vehicles/delete/{id}(id=${vehicle.id})}"
+                  method="post"
+                  onsubmit="return confirm('Delete this vehicle?')">
+                <button class="btn" type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+
+    <tr th:if="${#lists.isEmpty(vehicles)}">
+        <td colspan="9">No vehicles available.</td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
