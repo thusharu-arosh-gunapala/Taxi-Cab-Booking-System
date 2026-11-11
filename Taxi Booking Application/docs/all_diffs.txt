@@ -1,0 +1,4344 @@
+﻿diff --git a/.gitignore b/.gitignore
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/AuthenticationController.java b/AuthenticationController.java
+deleted file mode 100644
+index b2c31bf..0000000
+--- a/AuthenticationController.java
++++ /dev/null
+@@ -1,87 +0,0 @@
+-package com.taxibooking.controller; //AuthenticationController
+-
+-import com.taxibooking.model.User;
+-import com.taxibooking.service.AuthenticationService;
+-import com.taxibooking.service.UserService;
+-import com.taxibooking.service.ValidationException;
+-import jakarta.servlet.http.HttpServletRequest;
+-import jakarta.servlet.http.HttpSession;
+-import org.springframework.stereotype.Controller;
+-import org.springframework.ui.Model;
+-import org.springframework.web.bind.annotation.GetMapping;
+-import org.springframework.web.bind.annotation.PostMapping;
+-import org.springframework.web.bind.annotation.RequestParam;
+-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+-
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-@Controller
+-public class AuthenticationController {
+-
+-    private final AuthenticationService authService;
+-    private final UserService userService;
+-
+-    public AuthenticationController(AuthenticationService authService, UserService userService) {
+-        this.authService = authService;
+-        this.userService = userService;
+-    }
+-
+-    @GetMapping("/")
+-    public String home() {
+-        return "redirect:/login";
+-    }
+-
+-    // ---------- Register ----------
+-    @GetMapping("/register")
+-    public String registerForm(Model model) {
+-        model.addAttribute("form", new HashMap<String, String>());
+-        return "passenger/register";
+-    }
+-
+-    @PostMapping("/register")
+-    public String register(@RequestParam Map<String, String> params, Model model, RedirectAttributes ra) {
+-        try {
+-            userService.register(params);
+-            ra.addFlashAttribute("success", "Account created. Please log in.");
+-            return "redirect:/login";
+-        } catch (ValidationException e) {
+-            Map<String, String> form = new HashMap<>(params);
+-            form.remove("password");
+-            form.remove("confirmPassword");
+-            model.addAttribute("form", form);
+-            model.addAttribute("errors", e.getErrors());
+-            return "passenger/register";
+-        }
+-    }
+-
+-    // ---------- Login / Logout ----------
+-    @GetMapping("/login")
+-    public String loginForm(HttpSession session) {
+-        return session.getAttribute("userId") != null ? "redirect:/passenger/dashboard" : "passenger/login";
+-    }
+-
+-    @PostMapping("/login")
+-    public String login(@RequestParam String email, @RequestParam String password,
+-                        HttpServletRequest request, Model model) {
+-        try {
+-            User user = authService.login(email, password);
+-            HttpSession session = request.getSession(true);
+-            request.changeSessionId();                  // avoid session fixation
+-            session.setAttribute("userId", user.getUserId());
+-            return "redirect:/passenger/dashboard";
+-        } catch (ValidationException e) {
+-            model.addAttribute("errors", e.getErrors());
+-            model.addAttribute("email", email);
+-            return "passenger/login";
+-        }
+-    }
+-
+-    @PostMapping("/logout")
+-    public String logout(HttpSession session, RedirectAttributes ra) {
+-        session.invalidate();
+-        ra.addFlashAttribute("success", "You have been logged out.");
+-        return "redirect:/login";
+-    }
+-}
+-
+diff --git a/AuthenticationService.java b/AuthenticationService.java
+deleted file mode 100644
+index bbde077..0000000
+--- a/AuthenticationService.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-package com.taxibooking.service; //AuthenticationService
+-
+-import com.taxibooking.model.User;
+-import com.taxibooking.repository.UserRepository;
+-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+-import org.springframework.stereotype.Service;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+-
+-@Service
+-public class AuthenticationService {
+-
+-    public static final int MIN_PASSWORD_LENGTH = 6;
+-
+-    private final UserRepository userRepository;
+-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+-
+-    public AuthenticationService(UserRepository userRepository) {
+-        this.userRepository = userRepository;
+-    }
+-
+-    public String hash(String rawPassword) {
+-        return encoder.encode(rawPassword);
+-    }
+-
+-    public boolean matches(String rawPassword, String hash) {
+-        return rawPassword != null && encoder.matches(rawPassword, hash);
+-    }
+-
+-    /** Returns the user if credentials are valid and the account is ACTIVE. */
+-    public User login(String email, String password) {
+-        User user = userRepository.findByEmail(email == null ? "" : email.trim()).orElse(null);
+-        if (user == null || !matches(password, user.getPassword())) {
+-            throw new ValidationException("Invalid email or password.");
+-        }
+-        if (!user.isActive()) {
+-            throw new ValidationException("This account has been deactivated.");
+-        }
+-        return user;
+-    }
+-
+-    public void changePassword(String userId, String current, String newPw, String confirm) {
+-        List<String> errors = new ArrayList<>();
+-        User user = userRepository.findById(userId)
+-                .orElseThrow(() -> new ValidationException("User not found."));
+-
+-        if (!matches(current, user.getPassword())) errors.add("Current password is incorrect.");
+-        if (newPw == null || newPw.length() < MIN_PASSWORD_LENGTH)
+-            errors.add("New password must be at least " + MIN_PASSWORD_LENGTH + " characters.");
+-        else if (newPw.equals(current)) errors.add("New password must be different from the current password.");
+-        if (newPw == null || !newPw.equals(confirm)) errors.add("New password and confirmation do not match.");
+-        if (!errors.isEmpty()) throw new ValidationException(errors);
+-
+-        user.setPassword(hash(newPw));
+-        userRepository.save(user);
+-    }
+-}
+diff --git a/FavouriteLocation.java b/FavouriteLocation.java
+deleted file mode 100644
+index dae74ef..0000000
+--- a/FavouriteLocation.java
++++ /dev/null
+@@ -1,34 +0,0 @@
+-package com.taxibooking.model; //FavouriteLocation
+-
+-/** Stored in favourite_locations.txt as: locationId|passengerId|type|address|latitude|longitude */
+-public class FavouriteLocation {
+-    public enum Type { HOME, WORK, OTHER }
+-
+-    private String locationId;
+-    private String passengerId;
+-    private Type type;
+-    private String address;
+-    private double latitude;
+-    private double longitude;
+-
+-    public FavouriteLocation() { }
+-
+-    public String toFileLine() {
+-        return String.join("|", User.clean(locationId), User.clean(passengerId), type.name(),
+-                User.clean(address), String.valueOf(latitude), String.valueOf(longitude));
+-    }
+-
+-    public String getLocationId() { return locationId; }
+-    public void setLocationId(String locationId) { this.locationId = locationId; }
+-    public String getPassengerId() { return passengerId; }
+-    public void setPassengerId(String passengerId) { this.passengerId = passengerId; }
+-    public Type getType() { return type; }
+-    public void setType(Type type) { this.type = type; }
+-    public String getAddress() { return address; }
+-    public void setAddress(String address) { this.address = address; }
+-    public double getLatitude() { return latitude; }
+-    public void setLatitude(double latitude) { this.latitude = latitude; }
+-    public double getLongitude() { return longitude; }
+-    public void setLongitude(double longitude) { this.longitude = longitude; }
+-}
+-
+diff --git a/FavouriteLocationRepository.java b/FavouriteLocationRepository.java
+deleted file mode 100644
+index 1b05b4e..0000000
+--- a/FavouriteLocationRepository.java
++++ /dev/null
+@@ -1,106 +0,0 @@
+-package com.taxibooking.repository; //FavouriteLocationRepository
+-
+-import com.taxibooking.model.FavouriteLocation;
+-import org.springframework.beans.factory.annotation.Value;
+-import org.springframework.stereotype.Repository;
+-
+-import java.io.IOException;
+-import java.io.UncheckedIOException;
+-import java.nio.charset.StandardCharsets;
+-import java.nio.file.Files;
+-import java.nio.file.Path;
+-import java.nio.file.Paths;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Optional;
+-
+-/** File-based storage for favourite_locations.txt */
+-@Repository
+-public class FavouriteLocationRepository {
+-
+-    private final Path file;
+-
+-    public FavouriteLocationRepository(@Value("${app.data-dir:data}") String dataDir) throws IOException {
+-        Path dir = Paths.get(dataDir);
+-        Files.createDirectories(dir);
+-        this.file = dir.resolve("favourite_locations.txt");
+-        if (!Files.exists(file)) Files.createFile(file);
+-    }
+-
+-    public synchronized List<FavouriteLocation> findAll() {
+-        try {
+-            List<FavouriteLocation> list = new ArrayList<>();
+-            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+-                if (!line.isBlank()) list.add(parse(line));
+-            }
+-            return list;
+-        } catch (IOException e) {
+-            throw new UncheckedIOException(e);
+-        }
+-    }
+-
+-    public synchronized List<FavouriteLocation> findByPassengerId(String passengerId) {
+-        List<FavouriteLocation> result = new ArrayList<>();
+-        for (FavouriteLocation f : findAll()) {
+-            if (f.getPassengerId().equals(passengerId)) result.add(f);
+-        }
+-        return result;
+-    }
+-
+-    public synchronized Optional<FavouriteLocation> findById(String id) {
+-        return findAll().stream().filter(f -> f.getLocationId().equals(id)).findFirst();
+-    }
+-
+-    public synchronized FavouriteLocation save(FavouriteLocation loc) {
+-        List<FavouriteLocation> all = findAll();
+-        boolean replaced = false;
+-        for (int i = 0; i < all.size(); i++) {
+-            if (all.get(i).getLocationId().equals(loc.getLocationId())) {
+-                all.set(i, loc);
+-                replaced = true;
+-                break;
+-            }
+-        }
+-        if (!replaced) all.add(loc);
+-        writeAll(all);
+-        return loc;
+-    }
+-
+-    public synchronized void deleteById(String id) {
+-        List<FavouriteLocation> all = findAll();
+-        all.removeIf(f -> f.getLocationId().equals(id));
+-        writeAll(all);
+-    }
+-
+-    public synchronized String nextId() {
+-        int max = 0;
+-        for (FavouriteLocation f : findAll()) {
+-            try {
+-                max = Math.max(max, Integer.parseInt(f.getLocationId().substring(1)));
+-            } catch (NumberFormatException ignored) { }
+-        }
+-        return String.format("F%03d", max + 1);
+-    }
+-
+-    private FavouriteLocation parse(String line) {
+-        String[] p = line.split("\\|", -1);
+-        FavouriteLocation f = new FavouriteLocation();
+-        f.setLocationId(p[0]);
+-        f.setPassengerId(p[1]);
+-        f.setType(FavouriteLocation.Type.valueOf(p[2]));
+-        f.setAddress(p[3]);
+-        f.setLatitude(Double.parseDouble(p[4]));
+-        f.setLongitude(Double.parseDouble(p[5]));
+-        return f;
+-    }
+-
+-    private void writeAll(List<FavouriteLocation> list) {
+-        try {
+-            List<String> lines = new ArrayList<>();
+-            for (FavouriteLocation f : list) lines.add(f.toFileLine());
+-            Files.write(file, lines, StandardCharsets.UTF_8);
+-        } catch (IOException e) {
+-            throw new UncheckedIOException(e);
+-        }
+-    }
+-}
+diff --git a/Passenger.java b/Passenger.java
+deleted file mode 100644
+index 6240459..0000000
+--- a/Passenger.java
++++ /dev/null
+@@ -1,12 +0,0 @@
+-package com.taxibooking.model; //Passenger
+-
+-/** A customer account. Passenger ID looks like P001, P002 ... */
+-public class Passenger extends User {
+-    public static final String ROLE = "PASSENGER";
+-
+-    public Passenger() {
+-        setRole(ROLE);
+-    }
+-
+-    public String getPassengerId() { return getUserId(); }
+-}
+diff --git a/README.md b/README.md
+deleted file mode 100644
+index 06b17d0..0000000
+--- a/README.md
++++ /dev/null
+@@ -1 +0,0 @@
+-# Taxi-Cab-Booking-System
+\ No newline at end of file
+diff --git a/Taxi-Cab-Service-Booking-System- b/Taxi-Cab-Service-Booking-System-
+deleted file mode 160000
+index da504f7..0000000
+--- a/Taxi-Cab-Service-Booking-System-
++++ /dev/null
+@@ -1 +0,0 @@
+-Subproject commit da504f75991eb93d63488078f2512c61de3fa581
+diff --git a/TaxiBookingApplication.java b/TaxiBookingApplication.java
+deleted file mode 100644
+index 8f474b5..0000000
+--- a/TaxiBookingApplication.java
++++ /dev/null
+@@ -1,11 +0,0 @@
+-package com.taxibooking; //TaxiBookingApplication
+-
+-import org.springframework.boot.SpringApplication;
+-import org.springframework.boot.autoconfigure.SpringBootApplication;
+-
+-@SpringBootApplication
+-public class TaxiBookingApplication {
+-    public static void main(String[] args) {
+-        SpringApplication.run(TaxiBookingApplication.class, args);
+-    }
+-}
+diff --git a/User.java b/User.java
+deleted file mode 100644
+index c7bdbdc..0000000
+--- a/User.java
++++ /dev/null
+@@ -1,48 +0,0 @@
+-package com.taxibooking.model; //User
+-
+-/** Base account. Stored in users.txt as: id|fullName|email|phone|passwordHash|address|role|status */
+-public class User {
+-    public static final String ACTIVE = "ACTIVE";
+-    public static final String INACTIVE = "INACTIVE";
+-
+-    private String userId;
+-    private String fullName;
+-    private String email;
+-    private String phone;
+-    private String password;   // BCrypt hash
+-    private String address;
+-    private String role;
+-    private String status = ACTIVE;
+-
+-    public User() { }
+-
+-    public String toFileLine() {
+-        return String.join("|", clean(userId), clean(fullName), clean(email), clean(phone),
+-                clean(password), clean(address), clean(role), clean(status));
+-    }
+-
+-    /** The file uses '|' as a separator, so it must never appear inside a value. */
+-    public static String clean(String s) {
+-        return s == null ? "" : s.replace("|", " ").replace("\r", " ").replace("\n", " ").trim();
+-    }
+-
+-    public boolean isActive() { return ACTIVE.equals(status); }
+-
+-    public String getUserId() { return userId; }
+-    public void setUserId(String userId) { this.userId = userId; }
+-    public String getFullName() { return fullName; }
+-    public void setFullName(String fullName) { this.fullName = fullName; }
+-    public String getEmail() { return email; }
+-    public void setEmail(String email) { this.email = email; }
+-    public String getPhone() { return phone; }
+-    public void setPhone(String phone) { this.phone = phone; }
+-    public String getPassword() { return password; }
+-    public void setPassword(String password) { this.password = password; }
+-    public String getAddress() { return address; }
+-    public void setAddress(String address) { this.address = address; }
+-    public String getRole() { return role; }
+-    public void setRole(String role) { this.role = role; }
+-    public String getStatus() { return status; }
+-    public void setStatus(String status) { this.status = status; }
+-}
+-
+diff --git a/UserController.java b/UserController.java
+deleted file mode 100644
+index 5c5ea2a..0000000
+--- a/UserController.java
++++ /dev/null
+@@ -1,191 +0,0 @@
+-package com.taxibooking.controller; //UserController
+-
+-import com.taxibooking.model.FavouriteLocation;
+-import com.taxibooking.model.Passenger;
+-import com.taxibooking.model.User;
+-import com.taxibooking.service.AuthenticationService;
+-import com.taxibooking.service.UserService;
+-import com.taxibooking.service.ValidationException;
+-import jakarta.servlet.http.HttpSession;
+-import org.springframework.stereotype.Controller;
+-import org.springframework.ui.Model;
+-import org.springframework.web.bind.annotation.GetMapping;
+-import org.springframework.web.bind.annotation.PathVariable;
+-import org.springframework.web.bind.annotation.PostMapping;
+-import org.springframework.web.bind.annotation.RequestMapping;
+-import org.springframework.web.bind.annotation.RequestParam;
+-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+-
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-/** Everything a logged-in passenger can do with their own account. */
+-@Controller
+-@RequestMapping("/passenger")
+-public class UserController {
+-
+-    private static final String LOGIN = "redirect:/login";
+-
+-    private final UserService userService;
+-    private final AuthenticationService authService;
+-
+-    public UserController(UserService userService, AuthenticationService authService) {
+-        this.userService = userService;
+-        this.authService = authService;
+-    }
+-
+-    /** Returns the logged-in ACTIVE passenger, or null (caller redirects to /login). */
+-    private Passenger current(HttpSession session) {
+-        Object id = session.getAttribute("userId");
+-        if (id == null) return null;
+-        return userService.findPassenger((String) id).filter(User::isActive).orElse(null);
+-    }
+-
+-    // ---------- Dashboard ----------
+-    @GetMapping("/dashboard")
+-    public String dashboard(HttpSession session, Model model) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        model.addAttribute("user", p);
+-        model.addAttribute("favouriteCount", userService.getFavourites(p.getUserId()).size());
+-        return "passenger/passenger-dashboard";
+-    }
+-
+-    // ---------- View profile ----------
+-    @GetMapping("/profile")
+-    public String profile(HttpSession session, Model model) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        model.addAttribute("user", p);
+-        return "passenger/profile";
+-    }
+-
+-    // ---------- Update profile ----------
+-    @GetMapping("/profile/edit")
+-    public String editProfileForm(HttpSession session, Model model) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        Map<String, String> form = new HashMap<>();
+-        form.put("fullName", p.getFullName());
+-        form.put("phone", p.getPhone());
+-        form.put("address", p.getAddress());
+-        model.addAttribute("user", p);
+-        model.addAttribute("form", form);
+-        return "passenger/edit-profile";
+-    }
+-
+-    @PostMapping("/profile/edit")
+-    public String editProfile(@RequestParam Map<String, String> params, HttpSession session,
+-                              Model model, RedirectAttributes ra) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        try {
+-            userService.updateProfile(p.getUserId(), params);
+-            ra.addFlashAttribute("success", "Profile updated.");
+-            return "redirect:/passenger/profile";
+-        } catch (ValidationException e) {
+-            model.addAttribute("user", p);
+-            model.addAttribute("form", params);
+-            model.addAttribute("errors", e.getErrors());
+-            return "passenger/edit-profile";
+-        }
+-    }
+-
+-    // ---------- Change password ----------
+-    @GetMapping("/change-password")
+-    public String changePasswordForm(HttpSession session, Model model) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        model.addAttribute("user", p);
+-        return "passenger/change-password";
+-    }
+-
+-    @PostMapping("/change-password")
+-    public String changePassword(@RequestParam String currentPassword, @RequestParam String newPassword,
+-                                 @RequestParam String confirmPassword, HttpSession session,
+-                                 Model model, RedirectAttributes ra) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        try {
+-            authService.changePassword(p.getUserId(), currentPassword, newPassword, confirmPassword);
+-            ra.addFlashAttribute("success", "Password changed successfully.");
+-            return "redirect:/passenger/profile";
+-        } catch (ValidationException e) {
+-            model.addAttribute("user", p);
+-            model.addAttribute("errors", e.getErrors());
+-            return "passenger/change-password";
+-        }
+-    }
+-
+-    // ---------- Deactivate account ----------
+-    @PostMapping("/deactivate")
+-    public String deactivate(@RequestParam String password, HttpSession session, RedirectAttributes ra) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        try {
+-            userService.deactivate(p.getUserId(), password);
+-            session.invalidate();
+-            ra.addFlashAttribute("success", "Your account has been deactivated.");
+-            return LOGIN;
+-        } catch (ValidationException e) {
+-            ra.addFlashAttribute("errors", e.getErrors());
+-            return "redirect:/passenger/profile";
+-        }
+-    }
+-
+-    // ---------- Favourite locations (list / add / edit / delete) ----------
+-    @GetMapping("/favourites")
+-    public String favourites(@RequestParam(required = false) String edit, HttpSession session, Model model) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        model.addAttribute("user", p);
+-        model.addAttribute("locations", userService.getFavourites(p.getUserId()));
+-        model.addAttribute("types", FavouriteLocation.Type.values());
+-
+-        FavouriteLocation editing = edit == null ? null : userService.getFavourite(p.getUserId(), edit).orElse(null);
+-        model.addAttribute("editing", editing);
+-        return "passenger/favourite-locations";
+-    }
+-
+-    @PostMapping("/favourites")
+-    public String addFavourite(@RequestParam Map<String, String> params, HttpSession session, RedirectAttributes ra) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        try {
+-            userService.addFavourite(p.getUserId(), params);
+-            ra.addFlashAttribute("success", "Location saved.");
+-        } catch (ValidationException e) {
+-            ra.addFlashAttribute("errors", e.getErrors());
+-        }
+-        return "redirect:/passenger/favourites";
+-    }
+-
+-    @PostMapping("/favourites/{id}/update")
+-    public String updateFavourite(@PathVariable String id, @RequestParam Map<String, String> params,
+-                                  HttpSession session, RedirectAttributes ra) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        try {
+-            userService.updateFavourite(p.getUserId(), id, params);
+-            ra.addFlashAttribute("success", "Location updated.");
+-            return "redirect:/passenger/favourites";
+-        } catch (ValidationException e) {
+-            ra.addFlashAttribute("errors", e.getErrors());
+-            return "redirect:/passenger/favourites?edit=" + id;
+-        }
+-    }
+-
+-    @PostMapping("/favourites/{id}/delete")
+-    public String deleteFavourite(@PathVariable String id, HttpSession session, RedirectAttributes ra) {
+-        Passenger p = current(session);
+-        if (p == null) return LOGIN;
+-        try {
+-            userService.deleteFavourite(p.getUserId(), id);
+-            ra.addFlashAttribute("success", "Location deleted.");
+-        } catch (ValidationException e) {
+-            ra.addFlashAttribute("errors", e.getErrors());
+-        }
+-        return "redirect:/passenger/favourites";
+-    }
+-}
+-
+diff --git a/UserRepository.java b/UserRepository.java
+deleted file mode 100644
+index d498e56..0000000
+--- a/UserRepository.java
++++ /dev/null
+@@ -1,109 +0,0 @@
+-package com.taxibooking.repository; //UserRepository
+-
+-import com.taxibooking.model.Passenger;
+-import com.taxibooking.model.User;
+-import org.springframework.beans.factory.annotation.Value;
+-import org.springframework.stereotype.Repository;
+-
+-import java.io.IOException;
+-import java.io.UncheckedIOException;
+-import java.nio.charset.StandardCharsets;
+-import java.nio.file.Files;
+-import java.nio.file.Path;
+-import java.nio.file.Paths;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Optional;
+-
+-/** File-based storage for users.txt. All methods are synchronized so concurrent requests don't corrupt the file. */
+-@Repository
+-public class UserRepository {
+-
+-    private final Path file;
+-
+-    public UserRepository(@Value("${app.data-dir:data}") String dataDir) throws IOException {
+-        Path dir = Paths.get(dataDir);
+-        Files.createDirectories(dir);
+-        this.file = dir.resolve("users.txt");
+-        if (!Files.exists(file)) Files.createFile(file);
+-    }
+-
+-    public synchronized List<User> findAll() {
+-        try {
+-            List<User> users = new ArrayList<>();
+-            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+-                if (!line.isBlank()) users.add(parse(line));
+-            }
+-            return users;
+-        } catch (IOException e) {
+-            throw new UncheckedIOException(e);
+-        }
+-    }
+-
+-    public synchronized Optional<User> findById(String id) {
+-        return findAll().stream().filter(u -> u.getUserId().equals(id)).findFirst();
+-    }
+-
+-    public synchronized Optional<User> findByEmail(String email) {
+-        return findAll().stream().filter(u -> u.getEmail().equalsIgnoreCase(email)).findFirst();
+-    }
+-
+-    /** Insert a new user, or replace the existing one with the same ID. */
+-    public synchronized User save(User user) {
+-        List<User> all = findAll();
+-        boolean replaced = false;
+-        for (int i = 0; i < all.size(); i++) {
+-            if (all.get(i).getUserId().equals(user.getUserId())) {
+-                all.set(i, user);
+-                replaced = true;
+-                break;
+-            }
+-        }
+-        if (!replaced) all.add(user);
+-        writeAll(all);
+-        return user;
+-    }
+-
+-    public synchronized void deleteById(String id) {
+-        List<User> all = findAll();
+-        all.removeIf(u -> u.getUserId().equals(id));
+-        writeAll(all);
+-    }
+-
+-    /** Next ID for a prefix, e.g. "P" -> P001, P002 ... */
+-    public synchronized String nextId(String prefix) {
+-        int max = 0;
+-        for (User u : findAll()) {
+-            if (u.getUserId().startsWith(prefix)) {
+-                try {
+-                    max = Math.max(max, Integer.parseInt(u.getUserId().substring(prefix.length())));
+-                } catch (NumberFormatException ignored) { }
+-            }
+-        }
+-        return String.format("%s%03d", prefix, max + 1);
+-    }
+-
+-    private User parse(String line) {
+-        String[] p = line.split("\\|", -1);
+-        User u = Passenger.ROLE.equals(p[6]) ? new Passenger() : new User();
+-        u.setUserId(p[0]);
+-        u.setFullName(p[1]);
+-        u.setEmail(p[2]);
+-        u.setPhone(p[3]);
+-        u.setPassword(p[4]);
+-        u.setAddress(p[5]);
+-        u.setRole(p[6]);
+-        u.setStatus(p[7]);
+-        return u;
+-    }
+-
+-    private void writeAll(List<User> users) {
+-        try {
+-            List<String> lines = new ArrayList<>();
+-            for (User u : users) lines.add(u.toFileLine());
+-            Files.write(file, lines, StandardCharsets.UTF_8);
+-        } catch (IOException e) {
+-            throw new UncheckedIOException(e);
+-        }
+-    }
+-}
+diff --git a/UserService.java b/UserService.java
+deleted file mode 100644
+index 39441f4..0000000
+--- a/UserService.java
++++ /dev/null
+@@ -1,204 +0,0 @@
+-package com.taxibooking.service; //UserService
+-
+-import com.taxibooking.model.FavouriteLocation;
+-import com.taxibooking.model.Passenger;
+-import com.taxibooking.model.User;
+-import com.taxibooking.repository.FavouriteLocationRepository;
+-import com.taxibooking.repository.UserRepository;
+-import org.springframework.stereotype.Service;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Optional;
+-import java.util.regex.Pattern;
+-
+-/** Passenger CRUD (register / view / update / deactivate / delete) and favourite locations. */
+-@Service
+-public class UserService {
+-
+-    private static final Pattern EMAIL = Pattern.compile("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$");
+-    private static final Pattern PHONE = Pattern.compile("^\\+?\\d{9,12}$");
+-
+-    private final UserRepository userRepository;
+-    private final FavouriteLocationRepository favouriteRepository;
+-    private final AuthenticationService authService;
+-
+-    public UserService(UserRepository userRepository,
+-                       FavouriteLocationRepository favouriteRepository,
+-                       AuthenticationService authService) {
+-        this.userRepository = userRepository;
+-        this.favouriteRepository = favouriteRepository;
+-        this.authService = authService;
+-    }
+-
+-    // ---------------- CREATE ----------------
+-    public Passenger register(Map<String, String> p) {
+-        String name = val(p, "fullName");
+-        String email = val(p, "email").toLowerCase();
+-        String phone = val(p, "phone");
+-        String address = val(p, "address");
+-        String password = p.getOrDefault("password", "");
+-        String confirm = p.getOrDefault("confirmPassword", "");
+-
+-        List<String> errors = new ArrayList<>();
+-        validateProfileFields(name, phone, address, errors);
+-        if (email.isEmpty()) errors.add("Email is required.");
+-        else if (!EMAIL.matcher(email).matches()) errors.add("Email format is invalid.");
+-        if (password.length() < AuthenticationService.MIN_PASSWORD_LENGTH)
+-            errors.add("Password must be at least " + AuthenticationService.MIN_PASSWORD_LENGTH + " characters.");
+-        if (!password.equals(confirm)) errors.add("Password and confirm password do not match.");
+-        if (errors.isEmpty() && userRepository.findByEmail(email).isPresent())
+-            errors.add("An account with this email already exists.");
+-        if (!errors.isEmpty()) throw new ValidationException(errors);
+-
+-        Passenger passenger = new Passenger();
+-        passenger.setUserId(userRepository.nextId("P"));
+-        passenger.setFullName(name);
+-        passenger.setEmail(email);
+-        passenger.setPhone(phone);
+-        passenger.setAddress(address);
+-        passenger.setPassword(authService.hash(password));
+-        passenger.setStatus(User.ACTIVE);
+-        userRepository.save(passenger);
+-        return passenger;
+-    }
+-
+-    // ---------------- READ ----------------
+-    public Optional<Passenger> findPassenger(String id) {
+-        return userRepository.findById(id)
+-                .filter(u -> u instanceof Passenger)
+-                .map(u -> (Passenger) u);
+-    }
+-
+-    public List<User> findAllUsers() {
+-        return userRepository.findAll();
+-    }
+-
+-    // ---------------- UPDATE ----------------
+-    /** Email is the login ID so it is not editable here. */
+-    public Passenger updateProfile(String id, Map<String, String> p) {
+-        String name = val(p, "fullName");
+-        String phone = val(p, "phone");
+-        String address = val(p, "address");
+-
+-        List<String> errors = new ArrayList<>();
+-        validateProfileFields(name, phone, address, errors);
+-        if (!errors.isEmpty()) throw new ValidationException(errors);
+-
+-        Passenger passenger = findPassenger(id).orElseThrow(() -> new ValidationException("User not found."));
+-        passenger.setFullName(name);
+-        passenger.setPhone(phone);
+-        passenger.setAddress(address);
+-        userRepository.save(passenger);
+-        return passenger;
+-    }
+-
+-    // ---------------- DELETE / DEACTIVATE ----------------
+-    /** Soft delete: the record stays in users.txt with status INACTIVE (keeps booking history valid). */
+-    public void deactivate(String id, String password) {
+-        Passenger passenger = findPassenger(id).orElseThrow(() -> new ValidationException("User not found."));
+-        if (!authService.matches(password, passenger.getPassword()))
+-            throw new ValidationException("Password is incorrect. Account was not deactivated.");
+-        passenger.setStatus(User.INACTIVE);
+-        userRepository.save(passenger);
+-    }
+-
+-    /** Hard delete (e.g. for admin use). Also removes the passenger's favourite locations. */
+-    public void deletePermanently(String id) {
+-        for (FavouriteLocation f : favouriteRepository.findByPassengerId(id)) {
+-            favouriteRepository.deleteById(f.getLocationId());
+-        }
+-        userRepository.deleteById(id);
+-    }
+-
+-    // ---------------- FAVOURITE LOCATIONS ----------------
+-    public List<FavouriteLocation> getFavourites(String passengerId) {
+-        return favouriteRepository.findByPassengerId(passengerId);
+-    }
+-
+-    public Optional<FavouriteLocation> getFavourite(String passengerId, String locationId) {
+-        return favouriteRepository.findById(locationId)
+-                .filter(f -> f.getPassengerId().equals(passengerId));
+-    }
+-
+-    public FavouriteLocation addFavourite(String passengerId, Map<String, String> p) {
+-        FavouriteLocation loc = new FavouriteLocation();
+-        loc.setPassengerId(passengerId);
+-        applyFavourite(loc, p);
+-        loc.setLocationId(favouriteRepository.nextId());
+-        return favouriteRepository.save(loc);
+-    }
+-
+-    public FavouriteLocation updateFavourite(String passengerId, String locationId, Map<String, String> p) {
+-        FavouriteLocation loc = getFavourite(passengerId, locationId)
+-                .orElseThrow(() -> new ValidationException("Location not found."));
+-        applyFavourite(loc, p);
+-        return favouriteRepository.save(loc);
+-    }
+-
+-    public void deleteFavourite(String passengerId, String locationId) {
+-        getFavourite(passengerId, locationId)
+-                .orElseThrow(() -> new ValidationException("Location not found."));
+-        favouriteRepository.deleteById(locationId);
+-    }
+-
+-    // ---------------- helpers ----------------
+-    private void applyFavourite(FavouriteLocation loc, Map<String, String> p) {
+-        List<String> errors = new ArrayList<>();
+-
+-        FavouriteLocation.Type type = null;
+-        try {
+-            type = FavouriteLocation.Type.valueOf(val(p, "type").toUpperCase());
+-        } catch (IllegalArgumentException e) {
+-            errors.add("Location type must be HOME, WORK or OTHER.");
+-        }
+-
+-        String address = val(p, "address");
+-        if (address.isEmpty()) errors.add("Address is required.");
+-
+-        double lat = 0, lng = 0;
+-        try {
+-            lat = Double.parseDouble(val(p, "latitude"));
+-            if (lat < -90 || lat > 90) errors.add("Latitude must be between -90 and 90.");
+-        } catch (NumberFormatException e) {
+-            errors.add("Latitude must be a number.");
+-        }
+-        try {
+-            lng = Double.parseDouble(val(p, "longitude"));
+-            if (lng < -180 || lng > 180) errors.add("Longitude must be between -180 and 180.");
+-        } catch (NumberFormatException e) {
+-            errors.add("Longitude must be a number.");
+-        }
+-
+-        // only one HOME and one WORK per passenger
+-        if (type == FavouriteLocation.Type.HOME || type == FavouriteLocation.Type.WORK) {
+-            for (FavouriteLocation existing : favouriteRepository.findByPassengerId(loc.getPassengerId())) {
+-                boolean sameRecord = existing.getLocationId().equals(loc.getLocationId());
+-                if (!sameRecord && existing.getType() == type) {
+-                    errors.add("You already have a " + type + " location. Edit or delete it first.");
+-                    break;
+-                }
+-            }
+-        }
+-        if (!errors.isEmpty()) throw new ValidationException(errors);
+-
+-        loc.setType(type);
+-        loc.setAddress(address);
+-        loc.setLatitude(lat);
+-        loc.setLongitude(lng);
+-    }
+-
+-    private void validateProfileFields(String name, String phone, String address, List<String> errors) {
+-        if (name.isEmpty()) errors.add("Full name is required.");
+-        if (phone.isEmpty()) errors.add("Phone number is required.");
+-        else if (!PHONE.matcher(phone).matches()) errors.add("Phone must be 9-12 digits (optional leading +).");
+-        if (address.isEmpty()) errors.add("Address is required.");
+-    }
+-
+-    private String val(Map<String, String> p, String key) {
+-        String v = p.get(key);
+-        return v == null ? "" : v.trim();
+-    }
+-}
+-
+diff --git a/ValidationException.java b/ValidationException.java
+deleted file mode 100644
+index a4d2056..0000000
+--- a/ValidationException.java
++++ /dev/null
+@@ -1,19 +0,0 @@
+-package com.taxibooking.service; //ValidationException
+-
+-import java.util.List;
+-
+-/** Thrown by services when user input is invalid. Carries every error message so the page can show them all. */
+-public class ValidationException extends RuntimeException {
+-    private final List<String> errors;
+-
+-    public ValidationException(List<String> errors) {
+-        super(String.join("; ", errors));
+-        this.errors = errors;
+-    }
+-
+-    public ValidationException(String error) {
+-        this(List.of(error));
+-    }
+-
+-    public List<String> getErrors() { return errors; }
+-}
+diff --git a/docs/class-diagram/.gitkeep b/docs/class-diagram/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/docs/project-report/.gitkeep b/docs/project-report/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/docs/screenshots/.gitkeep b/docs/screenshots/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/docs/sequence-diagrams/.gitkeep b/docs/sequence-diagrams/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/docs/use-case-diagram/.gitkeep b/docs/use-case-diagram/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/pom.xml b/pom.xml
+deleted file mode 100644
+index 3650cb7..0000000
+--- a/pom.xml
++++ /dev/null
+@@ -1,17 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<project xmlns="http://maven.apache.org/POM/4.0.0"
+-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+-    <modelVersion>4.0.0</modelVersion>
+-
+-    <groupId>com.taxicab</groupId>
+-    <artifactId>Taxi-Cab-Service-Booking-System</artifactId>
+-    <version>1.0-SNAPSHOT</version>
+-
+-    <properties>
+-        <maven.compiler.source>21</maven.compiler.source>
+-        <maven.compiler.target>21</maven.compiler.target>
+-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+-    </properties>
+-
+-</project>
+\ No newline at end of file
+diff --git a/src/java/BookingandTripManagement.java b/src/java/BookingandTripManagement.java
+deleted file mode 100644
+index befbeef..0000000
+--- a/src/java/BookingandTripManagement.java
++++ /dev/null
+@@ -1,436 +0,0 @@
+-import java.util.ArrayList;
+-import java.util.Scanner;
+-
+-public class BookingandTripManagement {
+-
+-
+-static class Booking {
+-    int bookingId;
+-    String passengerName;
+-    String pickup;
+-    String destination;
+-    String bookingTime;
+-    String driverName;
+-    String status;
+-    String cancellationReason;
+-
+-    Booking(int bookingId, String passengerName, String pickup,
+-            String destination, String bookingTime) {
+-
+-        this.bookingId = bookingId;
+-        this.passengerName = passengerName;
+-        this.pickup = pickup;
+-        this.destination = destination;
+-        this.bookingTime = bookingTime;
+-        this.driverName = "Not Assigned";
+-        this.status = "Pending";
+-        this.cancellationReason = "None";
+-    }
+-
+-    void displayDetails() {
+-        System.out.println("\n--- Booking Details ---");
+-        System.out.println("Booking ID: " + bookingId);
+-        System.out.println("Passenger: " + passengerName);
+-        System.out.println("Pickup: " + pickup);
+-        System.out.println("Destination: " + destination);
+-        System.out.println("Booking Time: " + bookingTime);
+-        System.out.println("Driver: " + driverName);
+-        System.out.println("Status: " + status);
+-        System.out.println("Cancellation Reason: " + cancellationReason);
+-    }
+-}
+-
+-
+-    static Scanner input = new Scanner(System.in);
+-    static ArrayList<Booking> bookings = new ArrayList<>();
+-    static int nextBookingId = 1;
+-
+-    public static void main(String[] args) {
+-
+-        int choice;
+-
+-        do {
+-            System.out.println("\n===== BOOKING & TRIP MANAGEMENT =====");
+-            System.out.println("1. Book a Ride");
+-            System.out.println("2. View Booking Details");
+-            System.out.println("3. Update Scheduled Booking");
+-            System.out.println("4. Cancel Booking");
+-            System.out.println("5. Assign Driver");
+-            System.out.println("6. Driver Accept/Reject Ride");
+-            System.out.println("7. Update Ride Status");
+-            System.out.println("8. Start Trip");
+-            System.out.println("9. Complete Trip");
+-            System.out.println("10. View Current Trip");
+-            System.out.println("11. View Booking/Trip History");
+-            System.out.println("0. Exit");
+-
+-            System.out.print("Enter your choice: ");
+-            choice = input.nextInt();
+-            input.nextLine();
+-
+-            switch (choice) {
+-
+-                case 1:
+-                    bookRide();
+-                    break;
+-
+-                case 2:
+-                    viewBooking();
+-                    break;
+-
+-                case 3:
+-                    updateBooking();
+-                    break;
+-
+-                case 4:
+-                    cancelBooking();
+-                    break;
+-
+-                case 5:
+-                    assignDriver();
+-                    break;
+-
+-                case 6:
+-                    driverResponse();
+-                    break;
+-
+-                case 7:
+-                    updateRideStatus();
+-                    break;
+-
+-                case 8:
+-                    startTrip();
+-                    break;
+-
+-                case 9:
+-                    completeTrip();
+-                    break;
+-
+-                case 10:
+-                    viewCurrentTrip();
+-                    break;
+-
+-                case 11:
+-                    viewHistory();
+-                    break;
+-
+-                case 0:
+-                    System.out.println("Exiting Booking Management System.");
+-                    break;
+-
+-                default:
+-                    System.out.println("Invalid choice. Try again.");
+-            }
+-
+-        } while (choice != 0);
+-
+-        input.close();
+-    }
+-
+-    // 1. Book a ride
+-    static void bookRide() {
+-
+-        System.out.print("Enter passenger name: ");
+-        String name = input.nextLine();
+-
+-        System.out.print("Enter pickup location: ");
+-        String pickup = input.nextLine();
+-
+-        System.out.print("Enter destination: ");
+-        String destination = input.nextLine();
+-
+-        System.out.println("1. Book now");
+-        System.out.println("2. Schedule for later");
+-        System.out.print("Choose booking type: ");
+-
+-        int type = input.nextInt();
+-        input.nextLine();
+-
+-        String time;
+-
+-        if (type == 1) {
+-            time = "Now";
+-        } else {
+-            System.out.print("Enter scheduled date and time: ");
+-            time = input.nextLine();
+-        }
+-
+-        Booking booking = new Booking(
+-                nextBookingId++,
+-                name,
+-                pickup,
+-                destination,
+-                time
+-        );
+-
+-        bookings.add(booking);
+-
+-        System.out.println("Ride booked successfully!");
+-        System.out.println("Booking ID: " + booking.bookingId);
+-    }
+-
+-    // Find a booking using its ID
+-    static Booking findBooking(int id) {
+-
+-        for (Booking booking : bookings) {
+-            if (booking.bookingId == id) {
+-                return booking;
+-            }
+-        }
+-
+-        return null;
+-    }
+-
+-    // 2. View booking details
+-    static void viewBooking() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking != null) {
+-            booking.displayDetails();
+-        } else {
+-            System.out.println("Booking not found.");
+-        }
+-    }
+-
+-    // 3. Update scheduled booking
+-    static void updateBooking() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        if (!booking.status.equals("Pending")) {
+-            System.out.println("Only pending bookings can be updated.");
+-            return;
+-        }
+-
+-        System.out.print("Enter new pickup location: ");
+-        booking.pickup = input.nextLine();
+-
+-        System.out.print("Enter new destination: ");
+-        booking.destination = input.nextLine();
+-
+-        System.out.print("Enter new scheduled date and time: ");
+-        booking.bookingTime = input.nextLine();
+-
+-        System.out.println("Booking updated successfully.");
+-    }
+-
+-    // 4. Cancel booking and store cancellation reason
+-    static void cancelBooking() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        if (booking.status.equals("Completed")
+-                || booking.status.equals("Cancelled")) {
+-            System.out.println("This booking cannot be cancelled.");
+-            return;
+-        }
+-
+-        System.out.print("Enter cancellation reason: ");
+-        booking.cancellationReason = input.nextLine();
+-
+-        booking.status = "Cancelled";
+-
+-        System.out.println("Booking cancelled successfully.");
+-    }
+-
+-    // 5. Assign driver
+-    static void assignDriver() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        if (!booking.status.equals("Pending")) {
+-            System.out.println("Driver cannot be assigned to this booking.");
+-            return;
+-        }
+-
+-        System.out.print("Enter driver name: ");
+-        booking.driverName = input.nextLine();
+-
+-        booking.status = "Driver Assigned";
+-
+-        System.out.println("Driver assigned successfully.");
+-    }
+-
+-    // 6. Driver accepts or rejects ride
+-    static void driverResponse() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        if (!booking.status.equals("Driver Assigned")) {
+-            System.out.println("No assigned ride is waiting for a response.");
+-            return;
+-        }
+-
+-        System.out.println("1. Accept ride");
+-        System.out.println("2. Reject ride");
+-        System.out.print("Enter choice: ");
+-
+-        int choice = input.nextInt();
+-        input.nextLine();
+-
+-        if (choice == 1) {
+-            booking.status = "Accepted";
+-            System.out.println("Ride accepted by driver.");
+-        } else if (choice == 2) {
+-            booking.status = "Pending";
+-            booking.driverName = "Not Assigned";
+-            System.out.println("Ride rejected. Driver assignment removed.");
+-        } else {
+-            System.out.println("Invalid choice.");
+-        }
+-    }
+-
+-    // 7. Update ride status
+-    static void updateRideStatus() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        System.out.print("Enter new ride status: ");
+-        String status = input.nextLine();
+-
+-        if (status.equalsIgnoreCase("Pending")
+-                || status.equalsIgnoreCase("Driver Assigned")
+-                || status.equalsIgnoreCase("Accepted")
+-                || status.equalsIgnoreCase("In Progress")
+-                || status.equalsIgnoreCase("Completed")
+-                || status.equalsIgnoreCase("Cancelled")) {
+-
+-            booking.status = status;
+-            System.out.println("Ride status updated successfully.");
+-
+-        } else {
+-            System.out.println("Invalid ride status.");
+-        }
+-    }
+-
+-    // 8. Start trip
+-    static void startTrip() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        if (!booking.status.equals("Accepted")) {
+-            System.out.println("Driver must accept the ride before starting.");
+-            return;
+-        }
+-
+-        booking.status = "In Progress";
+-
+-        System.out.println("Trip started successfully.");
+-    }
+-
+-    // 9. Complete trip
+-    static void completeTrip() {
+-
+-        System.out.print("Enter booking ID: ");
+-        int id = input.nextInt();
+-        input.nextLine();
+-
+-        Booking booking = findBooking(id);
+-
+-        if (booking == null) {
+-            System.out.println("Booking not found.");
+-            return;
+-        }
+-
+-        if (!booking.status.equals("In Progress")) {
+-            System.out.println("Trip must be in progress before completion.");
+-            return;
+-        }
+-
+-        booking.status = "Completed";
+-
+-        System.out.println("Trip completed successfully.");
+-    }
+-
+-    // 10. View current trip
+-    static void viewCurrentTrip() {
+-
+-        boolean found = false;
+-
+-        for (Booking booking : bookings) {
+-
+-            if (booking.status.equals("In Progress")) {
+-                booking.displayDetails();
+-                found = true;
+-            }
+-        }
+-
+-        if (!found) {
+-            System.out.println("There are no trips in progress.");
+-        }
+-    }
+-
+-    // 11. View booking/trip history
+-    static void viewHistory() {
+-
+-        if (bookings.isEmpty()) {
+-            System.out.println("No booking history available.");
+-            return;
+-        }
+-
+-        System.out.println("\n===== BOOKING / TRIP HISTORY =====");
+-
+-        for (Booking booking : bookings) {
+-            booking.displayDetails();
+-        }
+-    }
+-}
+diff --git a/src/main/resources/static/images/.gitkeep b/src/main/resources/static/images/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/taxicab/TaxiCabBookingApplication.java b/taxicab/TaxiCabBookingApplication.java
+deleted file mode 100644
+index a8de78c..0000000
+--- a/taxicab/TaxiCabBookingApplication.java
++++ /dev/null
+@@ -1,12 +0,0 @@
+-package com.taxicab;
+-
+-import org.springframework.boot.SpringApplication;
+-import org.springframework.boot.autoconfigure.SpringBootApplication;
+-
+-@SpringBootApplication
+-public class TaxiCabBookingApplication {
+-
+-    public static void main(String[] args) {
+-        SpringApplication.run(TaxiCabBookingApplication.class, args);
+-    }
+-}
+diff --git a/taxicab/config/FareConfig.java b/taxicab/config/FareConfig.java
+deleted file mode 100644
+index f1517c0..0000000
+--- a/taxicab/config/FareConfig.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-package com.taxicab.config;
+-
+-import com.taxicab.model.FareRule;
+-import com.taxicab.model.VehicleCategory;
+-import org.springframework.boot.context.properties.ConfigurationProperties;
+-import org.springframework.stereotype.Component;
+-
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-@Component
+-@ConfigurationProperties(prefix = "app.fare")
+-public class FareConfig {
+-
+-    private String currency = "LKR";
+-    private final Map<String, FareRule> rules = new HashMap<>();
+-
+-    public String getCurrency() {
+-        return currency;
+-    }
+-
+-    public void setCurrency(String currency) {
+-        this.currency = currency;
+-    }
+-
+-    public Map<String, FareRule> getRules() {
+-        return rules;
+-    }
+-
+-    public void setRules(Map<String, FareRule> rules) {
+-        this.rules.clear();
+-        this.rules.putAll(rules);
+-    }
+-
+-    public FareRule getRule(VehicleCategory category) {
+-        String key = category.name();
+-        return rules.getOrDefault(key, defaultRule(category));
+-    }
+-
+-    private FareRule defaultRule(VehicleCategory category) {
+-        return switch (category) {
+-            case TUK_TUK -> new FareRule(category, 350.0, 80.0, 350.0, 0.0, 1.0, currency);
+-            case MINI -> new FareRule(category, 450.0, 95.0, 450.0, 0.0, 1.0, currency);
+-            case CAR -> new FareRule(category, 550.0, 110.0, 550.0, 0.0, 1.0, currency);
+-            case VAN -> new FareRule(category, 700.0, 150.0, 700.0, 0.0, 1.0, currency);
+-            case PREMIUM -> new FareRule(category, 900.0, 220.0, 900.0, 0.0, 1.05, currency);
+-        };
+-    }
+-}
+diff --git a/taxicab/config/MapsConfig.java b/taxicab/config/MapsConfig.java
+deleted file mode 100644
+index 43c6811..0000000
+--- a/taxicab/config/MapsConfig.java
++++ /dev/null
+@@ -1,29 +0,0 @@
+-package com.taxicab.config;
+-
+-import org.springframework.beans.factory.annotation.Value;
+-import org.springframework.context.annotation.Bean;
+-import org.springframework.context.annotation.Configuration;
+-import org.springframework.web.client.RestTemplate;
+-
+-@Configuration
+-public class MapsConfig {
+-
+-    @Value("${app.maptiler.api-key:}")
+-    private String apiKey;
+-
+-    @Value("${app.maptiler.base-url:https://api.maptiler.com}")
+-    private String baseUrl;
+-
+-    @Bean
+-    public RestTemplate restTemplate() {
+-        return new RestTemplate();
+-    }
+-
+-    public String getApiKey() {
+-        return apiKey;
+-    }
+-
+-    public String getBaseUrl() {
+-        return baseUrl;
+-    }
+-}
+diff --git a/taxicab/controller/ApiExceptionHandler.java b/taxicab/controller/ApiExceptionHandler.java
+deleted file mode 100644
+index 60fa4ae..0000000
+--- a/taxicab/controller/ApiExceptionHandler.java
++++ /dev/null
+@@ -1,69 +0,0 @@
+-package com.taxicab.controller;
+-
+-import com.taxicab.exception.*;
+-import org.springframework.http.HttpStatus;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.web.bind.MethodArgumentNotValidException;
+-import org.springframework.web.bind.annotation.ExceptionHandler;
+-import org.springframework.web.bind.annotation.RestControllerAdvice;
+-
+-import java.time.Instant;
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-@RestControllerAdvice
+-public class ApiExceptionHandler {
+-
+-    @ExceptionHandler(InvalidLocationException.class)
+-    public ResponseEntity<Map<String, Object>> handleInvalidLocation(InvalidLocationException ex) {
+-        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+-    }
+-
+-    @ExceptionHandler(RouteCalculationException.class)
+-    public ResponseEntity<Map<String, Object>> handleRouteCalculation(RouteCalculationException ex) {
+-        return error(HttpStatus.BAD_GATEWAY, ex.getMessage());
+-    }
+-
+-    @ExceptionHandler(FareCalculationException.class)
+-    public ResponseEntity<Map<String, Object>> handleFareCalculation(FareCalculationException ex) {
+-        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+-    }
+-
+-    @ExceptionHandler(BookingNotFoundException.class)
+-    public ResponseEntity<Map<String, Object>> handleBookingNotFound(BookingNotFoundException ex) {
+-        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+-    }
+-
+-    @ExceptionHandler(UnauthorizedBookingAccessException.class)
+-    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedBookingAccessException ex) {
+-        return error(HttpStatus.FORBIDDEN, ex.getMessage());
+-    }
+-
+-    @ExceptionHandler(TrackingUnavailableException.class)
+-    public ResponseEntity<Map<String, Object>> handleTrackingUnavailable(TrackingUnavailableException ex) {
+-        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+-    }
+-
+-    @ExceptionHandler(MethodArgumentNotValidException.class)
+-    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+-        String message = ex.getBindingResult().getFieldErrors().stream()
+-                .findFirst()
+-                .map(err -> err.getDefaultMessage())
+-                .orElse("Validation failed.");
+-        return error(HttpStatus.BAD_REQUEST, message);
+-    }
+-
+-    @ExceptionHandler(Exception.class)
+-    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+-        return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
+-    }
+-
+-    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
+-        Map<String, Object> payload = new HashMap<>();
+-        payload.put("timestamp", Instant.now());
+-        payload.put("status", status.value());
+-        payload.put("error", status.getReasonPhrase());
+-        payload.put("message", message);
+-        return ResponseEntity.status(status).body(payload);
+-    }
+-}
+diff --git a/taxicab/controller/CustomerBookingController.java b/taxicab/controller/CustomerBookingController.java
+deleted file mode 100644
+index 2ed9d8c..0000000
+--- a/taxicab/controller/CustomerBookingController.java
++++ /dev/null
+@@ -1,32 +0,0 @@
+-package com.taxicab.controller;
+-
+-import com.taxicab.dto.booking.BookingStatusResponse;
+-import com.taxicab.dto.booking.DriverAssignmentResponse;
+-import com.taxicab.service.CustomerBookingService;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.web.bind.annotation.GetMapping;
+-import org.springframework.web.bind.annotation.PathVariable;
+-import org.springframework.web.bind.annotation.PostMapping;
+-import org.springframework.web.bind.annotation.RequestMapping;
+-import org.springframework.web.bind.annotation.RestController;
+-
+-@RestController
+-@RequestMapping("/api/customer")
+-public class CustomerBookingController {
+-
+-    private final CustomerBookingService customerBookingService;
+-
+-    public CustomerBookingController(CustomerBookingService customerBookingService) {
+-        this.customerBookingService = customerBookingService;
+-    }
+-
+-    @PostMapping("/bookings/{bookingId}/find-driver")
+-    public ResponseEntity<DriverAssignmentResponse> findDriver(@PathVariable Long bookingId) {
+-        return ResponseEntity.ok(customerBookingService.findDriver(bookingId));
+-    }
+-
+-    @GetMapping("/bookings/{bookingId}/status")
+-    public ResponseEntity<BookingStatusResponse> getStatus(@PathVariable Long bookingId) {
+-        return ResponseEntity.ok(customerBookingService.getStatus(bookingId));
+-    }
+-}
+diff --git a/taxicab/controller/CustomerFareController.java b/taxicab/controller/CustomerFareController.java
+deleted file mode 100644
+index 6c2e7c6..0000000
+--- a/taxicab/controller/CustomerFareController.java
++++ /dev/null
+@@ -1,27 +0,0 @@
+-package com.taxicab.controller;
+-
+-import com.taxicab.dto.fare.FareRequest;
+-import com.taxicab.dto.fare.FareResponse;
+-import com.taxicab.service.CustomerFareService;
+-import jakarta.validation.Valid;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.web.bind.annotation.PostMapping;
+-import org.springframework.web.bind.annotation.RequestBody;
+-import org.springframework.web.bind.annotation.RequestMapping;
+-import org.springframework.web.bind.annotation.RestController;
+-
+-@RestController
+-@RequestMapping("/api/customer")
+-public class CustomerFareController {
+-
+-    private final CustomerFareService customerFareService;
+-
+-    public CustomerFareController(CustomerFareService customerFareService) {
+-        this.customerFareService = customerFareService;
+-    }
+-
+-    @PostMapping("/fares/estimate")
+-    public ResponseEntity<FareResponse> estimateFare(@Valid @RequestBody FareRequest request) {
+-        return ResponseEntity.ok(customerFareService.calculateFare(request));
+-    }
+-}
+diff --git a/taxicab/controller/CustomerLocationController.java b/taxicab/controller/CustomerLocationController.java
+deleted file mode 100644
+index 2863988..0000000
+--- a/taxicab/controller/CustomerLocationController.java
++++ /dev/null
+@@ -1,33 +0,0 @@
+-package com.taxicab.controller;
+-
+-import com.taxicab.dto.location.LocationResponse;
+-import com.taxicab.dto.location.LocationSuggestionResponse;
+-import com.taxicab.service.CustomerLocationService;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.web.bind.annotation.GetMapping;
+-import org.springframework.web.bind.annotation.RequestMapping;
+-import org.springframework.web.bind.annotation.RequestParam;
+-import org.springframework.web.bind.annotation.RestController;
+-
+-import java.util.List;
+-
+-@RestController
+-@RequestMapping("/api/customer")
+-public class CustomerLocationController {
+-
+-    private final CustomerLocationService customerLocationService;
+-
+-    public CustomerLocationController(CustomerLocationService customerLocationService) {
+-        this.customerLocationService = customerLocationService;
+-    }
+-
+-    @GetMapping("/locations/search")
+-    public ResponseEntity<List<LocationSuggestionResponse>> search(@RequestParam("q") String query) {
+-        return ResponseEntity.ok(customerLocationService.searchLocations(query));
+-    }
+-
+-    @GetMapping("/locations/reverse")
+-    public ResponseEntity<LocationResponse> reverseGeocode(@RequestParam double lat, @RequestParam double lon) {
+-        return ResponseEntity.ok(customerLocationService.reverseGeocode(new com.taxicab.dto.location.LocationRequest(lat, lon, null)));
+-    }
+-}
+diff --git a/taxicab/controller/CustomerRouteController.java b/taxicab/controller/CustomerRouteController.java
+deleted file mode 100644
+index 7c7379a..0000000
+--- a/taxicab/controller/CustomerRouteController.java
++++ /dev/null
+@@ -1,27 +0,0 @@
+-package com.taxicab.controller;
+-
+-import com.taxicab.dto.route.RouteRequest;
+-import com.taxicab.dto.route.RouteResponse;
+-import com.taxicab.service.CustomerRouteService;
+-import jakarta.validation.Valid;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.web.bind.annotation.PostMapping;
+-import org.springframework.web.bind.annotation.RequestBody;
+-import org.springframework.web.bind.annotation.RequestMapping;
+-import org.springframework.web.bind.annotation.RestController;
+-
+-@RestController
+-@RequestMapping("/api/customer")
+-public class CustomerRouteController {
+-
+-    private final CustomerRouteService customerRouteService;
+-
+-    public CustomerRouteController(CustomerRouteService customerRouteService) {
+-        this.customerRouteService = customerRouteService;
+-    }
+-
+-    @PostMapping("/routes")
+-    public ResponseEntity<RouteResponse> calculateRoute(@Valid @RequestBody RouteRequest request) {
+-        return ResponseEntity.ok(customerRouteService.calculate(request));
+-    }
+-}
+diff --git a/taxicab/controller/CustomerTrackingController.java b/taxicab/controller/CustomerTrackingController.java
+deleted file mode 100644
+index 988ad6a..0000000
+--- a/taxicab/controller/CustomerTrackingController.java
++++ /dev/null
+@@ -1,34 +0,0 @@
+-package com.taxicab.controller;
+-
+-import com.taxicab.dto.tracking.CustomerTrackingResponse;
+-import com.taxicab.dto.tracking.DriverLocationResponse;
+-import com.taxicab.service.CustomerTrackingService;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.web.bind.annotation.GetMapping;
+-import org.springframework.web.bind.annotation.PathVariable;
+-import org.springframework.web.bind.annotation.RequestMapping;
+-import org.springframework.web.bind.annotation.RequestParam;
+-import org.springframework.web.bind.annotation.RestController;
+-
+-@RestController
+-@RequestMapping("/api/customer")
+-public class CustomerTrackingController {
+-
+-    private final CustomerTrackingService customerTrackingService;
+-
+-    public CustomerTrackingController(CustomerTrackingService customerTrackingService) {
+-        this.customerTrackingService = customerTrackingService;
+-    }
+-
+-    @GetMapping("/bookings/{bookingId}/driver-location")
+-    public ResponseEntity<DriverLocationResponse> getDriverLocation(@PathVariable Long bookingId,
+-                                                                  @RequestParam Long customerId) {
+-        return ResponseEntity.ok(customerTrackingService.getDriverLocation(bookingId, customerId));
+-    }
+-
+-    @GetMapping("/bookings/{bookingId}/tracking")
+-    public ResponseEntity<CustomerTrackingResponse> getTracking(@PathVariable Long bookingId,
+-                                                              @RequestParam Long customerId) {
+-        return ResponseEntity.ok(customerTrackingService.getTracking(bookingId, customerId));
+-    }
+-}
+diff --git a/taxicab/dto/booking/BookingStatusResponse.java b/taxicab/dto/booking/BookingStatusResponse.java
+deleted file mode 100644
+index cda6d7c..0000000
+--- a/taxicab/dto/booking/BookingStatusResponse.java
++++ /dev/null
+@@ -1,50 +0,0 @@
+-package com.taxicab.dto.booking;
+-
+-public class BookingStatusResponse {
+-    private Long bookingId;
+-    private String status;
+-    private String message;
+-    private Long driverId;
+-
+-    public BookingStatusResponse() {
+-    }
+-
+-    public BookingStatusResponse(Long bookingId, String status, String message, Long driverId) {
+-        this.bookingId = bookingId;
+-        this.status = status;
+-        this.message = message;
+-        this.driverId = driverId;
+-    }
+-
+-    public Long getBookingId() {
+-        return bookingId;
+-    }
+-
+-    public void setBookingId(Long bookingId) {
+-        this.bookingId = bookingId;
+-    }
+-
+-    public String getStatus() {
+-        return status;
+-    }
+-
+-    public void setStatus(String status) {
+-        this.status = status;
+-    }
+-
+-    public String getMessage() {
+-        return message;
+-    }
+-
+-    public void setMessage(String message) {
+-        this.message = message;
+-    }
+-
+-    public Long getDriverId() {
+-        return driverId;
+-    }
+-
+-    public void setDriverId(Long driverId) {
+-        this.driverId = driverId;
+-    }
+-}
+diff --git a/taxicab/dto/booking/DriverAssignmentResponse.java b/taxicab/dto/booking/DriverAssignmentResponse.java
+deleted file mode 100644
+index a343389..0000000
+--- a/taxicab/dto/booking/DriverAssignmentResponse.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-package com.taxicab.dto.booking;
+-
+-public class DriverAssignmentResponse {
+-    private Long bookingId;
+-    private Long driverId;
+-    private String status;
+-    private boolean assigned;
+-    private String message;
+-
+-    public DriverAssignmentResponse() {
+-    }
+-
+-    public DriverAssignmentResponse(Long bookingId, Long driverId, String status, boolean assigned, String message) {
+-        this.bookingId = bookingId;
+-        this.driverId = driverId;
+-        this.status = status;
+-        this.assigned = assigned;
+-        this.message = message;
+-    }
+-
+-    public Long getBookingId() {
+-        return bookingId;
+-    }
+-
+-    public void setBookingId(Long bookingId) {
+-        this.bookingId = bookingId;
+-    }
+-
+-    public Long getDriverId() {
+-        return driverId;
+-    }
+-
+-    public void setDriverId(Long driverId) {
+-        this.driverId = driverId;
+-    }
+-
+-    public String getStatus() {
+-        return status;
+-    }
+-
+-    public void setStatus(String status) {
+-        this.status = status;
+-    }
+-
+-    public boolean isAssigned() {
+-        return assigned;
+-    }
+-
+-    public void setAssigned(boolean assigned) {
+-        this.assigned = assigned;
+-    }
+-
+-    public String getMessage() {
+-        return message;
+-    }
+-
+-    public void setMessage(String message) {
+-        this.message = message;
+-    }
+-}
+diff --git a/taxicab/dto/fare/FareRequest.java b/taxicab/dto/fare/FareRequest.java
+deleted file mode 100644
+index 2202d98..0000000
+--- a/taxicab/dto/fare/FareRequest.java
++++ /dev/null
+@@ -1,48 +0,0 @@
+-package com.taxicab.dto.fare;
+-
+-import com.taxicab.model.VehicleCategory;
+-import jakarta.validation.constraints.NotNull;
+-
+-public class FareRequest {
+-
+-    @NotNull(message = "Route ID is required")
+-    private Long routeId;
+-
+-    @NotNull(message = "Vehicle category is required")
+-    private VehicleCategory vehicleCategory;
+-
+-    private boolean peakHour = false;
+-
+-    public FareRequest() {
+-    }
+-
+-    public FareRequest(Long routeId, VehicleCategory vehicleCategory, boolean peakHour) {
+-        this.routeId = routeId;
+-        this.vehicleCategory = vehicleCategory;
+-        this.peakHour = peakHour;
+-    }
+-
+-    public Long getRouteId() {
+-        return routeId;
+-    }
+-
+-    public void setRouteId(Long routeId) {
+-        this.routeId = routeId;
+-    }
+-
+-    public VehicleCategory getVehicleCategory() {
+-        return vehicleCategory;
+-    }
+-
+-    public void setVehicleCategory(VehicleCategory vehicleCategory) {
+-        this.vehicleCategory = vehicleCategory;
+-    }
+-
+-    public boolean isPeakHour() {
+-        return peakHour;
+-    }
+-
+-    public void setPeakHour(boolean peakHour) {
+-        this.peakHour = peakHour;
+-    }
+-}
+diff --git a/taxicab/dto/fare/FareResponse.java b/taxicab/dto/fare/FareResponse.java
+deleted file mode 100644
+index 9b5fb71..0000000
+--- a/taxicab/dto/fare/FareResponse.java
++++ /dev/null
+@@ -1,84 +0,0 @@
+-package com.taxicab.dto.fare;
+-
+-import com.taxicab.model.VehicleCategory;
+-import java.time.Instant;
+-
+-public class FareResponse {
+-    private VehicleCategory vehicleCategory;
+-    private double baseFare;
+-    private double distanceCharge;
+-    private double applicableCharges;
+-    private double estimatedFare;
+-    private String currency;
+-    private Instant calculatedAt;
+-
+-    public FareResponse() {
+-    }
+-
+-    public FareResponse(VehicleCategory vehicleCategory, double baseFare, double distanceCharge,
+-                        double applicableCharges, double estimatedFare, String currency, Instant calculatedAt) {
+-        this.vehicleCategory = vehicleCategory;
+-        this.baseFare = baseFare;
+-        this.distanceCharge = distanceCharge;
+-        this.applicableCharges = applicableCharges;
+-        this.estimatedFare = estimatedFare;
+-        this.currency = currency;
+-        this.calculatedAt = calculatedAt;
+-    }
+-
+-    public VehicleCategory getVehicleCategory() {
+-        return vehicleCategory;
+-    }
+-
+-    public void setVehicleCategory(VehicleCategory vehicleCategory) {
+-        this.vehicleCategory = vehicleCategory;
+-    }
+-
+-    public double getBaseFare() {
+-        return baseFare;
+-    }
+-
+-    public void setBaseFare(double baseFare) {
+-        this.baseFare = baseFare;
+-    }
+-
+-    public double getDistanceCharge() {
+-        return distanceCharge;
+-    }
+-
+-    public void setDistanceCharge(double distanceCharge) {
+-        this.distanceCharge = distanceCharge;
+-    }
+-
+-    public double getApplicableCharges() {
+-        return applicableCharges;
+-    }
+-
+-    public void setApplicableCharges(double applicableCharges) {
+-        this.applicableCharges = applicableCharges;
+-    }
+-
+-    public double getEstimatedFare() {
+-        return estimatedFare;
+-    }
+-
+-    public void setEstimatedFare(double estimatedFare) {
+-        this.estimatedFare = estimatedFare;
+-    }
+-
+-    public String getCurrency() {
+-        return currency;
+-    }
+-
+-    public void setCurrency(String currency) {
+-        this.currency = currency;
+-    }
+-
+-    public Instant getCalculatedAt() {
+-        return calculatedAt;
+-    }
+-
+-    public void setCalculatedAt(Instant calculatedAt) {
+-        this.calculatedAt = calculatedAt;
+-    }
+-}
+diff --git a/taxicab/dto/location/LocationRequest.java b/taxicab/dto/location/LocationRequest.java
+deleted file mode 100644
+index 2035ceb..0000000
+--- a/taxicab/dto/location/LocationRequest.java
++++ /dev/null
+@@ -1,47 +0,0 @@
+-package com.taxicab.dto.location;
+-
+-import jakarta.validation.constraints.NotNull;
+-
+-public class LocationRequest {
+-
+-    @NotNull(message = "Latitude is required")
+-    private Double latitude;
+-
+-    @NotNull(message = "Longitude is required")
+-    private Double longitude;
+-
+-    private String address;
+-
+-    public LocationRequest() {
+-    }
+-
+-    public LocationRequest(Double latitude, Double longitude, String address) {
+-        this.latitude = latitude;
+-        this.longitude = longitude;
+-        this.address = address;
+-    }
+-
+-    public Double getLatitude() {
+-        return latitude;
+-    }
+-
+-    public void setLatitude(Double latitude) {
+-        this.latitude = latitude;
+-    }
+-
+-    public Double getLongitude() {
+-        return longitude;
+-    }
+-
+-    public void setLongitude(Double longitude) {
+-        this.longitude = longitude;
+-    }
+-
+-    public String getAddress() {
+-        return address;
+-    }
+-
+-    public void setAddress(String address) {
+-        this.address = address;
+-    }
+-}
+diff --git a/taxicab/dto/location/LocationResponse.java b/taxicab/dto/location/LocationResponse.java
+deleted file mode 100644
+index e6b58a0..0000000
+--- a/taxicab/dto/location/LocationResponse.java
++++ /dev/null
+@@ -1,50 +0,0 @@
+-package com.taxicab.dto.location;
+-
+-public class LocationResponse {
+-    private Double latitude;
+-    private Double longitude;
+-    private String address;
+-    private String formattedAddress;
+-
+-    public LocationResponse() {
+-    }
+-
+-    public LocationResponse(Double latitude, Double longitude, String address, String formattedAddress) {
+-        this.latitude = latitude;
+-        this.longitude = longitude;
+-        this.address = address;
+-        this.formattedAddress = formattedAddress;
+-    }
+-
+-    public Double getLatitude() {
+-        return latitude;
+-    }
+-
+-    public void setLatitude(Double latitude) {
+-        this.latitude = latitude;
+-    }
+-
+-    public Double getLongitude() {
+-        return longitude;
+-    }
+-
+-    public void setLongitude(Double longitude) {
+-        this.longitude = longitude;
+-    }
+-
+-    public String getAddress() {
+-        return address;
+-    }
+-
+-    public void setAddress(String address) {
+-        this.address = address;
+-    }
+-
+-    public String getFormattedAddress() {
+-        return formattedAddress;
+-    }
+-
+-    public void setFormattedAddress(String formattedAddress) {
+-        this.formattedAddress = formattedAddress;
+-    }
+-}
+diff --git a/taxicab/dto/location/LocationSuggestionResponse.java b/taxicab/dto/location/LocationSuggestionResponse.java
+deleted file mode 100644
+index dede55f..0000000
+--- a/taxicab/dto/location/LocationSuggestionResponse.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-package com.taxicab.dto.location;
+-
+-public class LocationSuggestionResponse {
+-    private String id;
+-    private String name;
+-    private String formattedAddress;
+-    private Double latitude;
+-    private Double longitude;
+-
+-    public LocationSuggestionResponse() {
+-    }
+-
+-    public LocationSuggestionResponse(String id, String name, String formattedAddress, Double latitude, Double longitude) {
+-        this.id = id;
+-        this.name = name;
+-        this.formattedAddress = formattedAddress;
+-        this.latitude = latitude;
+-        this.longitude = longitude;
+-    }
+-
+-    public String getId() {
+-        return id;
+-    }
+-
+-    public void setId(String id) {
+-        this.id = id;
+-    }
+-
+-    public String getName() {
+-        return name;
+-    }
+-
+-    public void setName(String name) {
+-        this.name = name;
+-    }
+-
+-    public String getFormattedAddress() {
+-        return formattedAddress;
+-    }
+-
+-    public void setFormattedAddress(String formattedAddress) {
+-        this.formattedAddress = formattedAddress;
+-    }
+-
+-    public Double getLatitude() {
+-        return latitude;
+-    }
+-
+-    public void setLatitude(Double latitude) {
+-        this.latitude = latitude;
+-    }
+-
+-    public Double getLongitude() {
+-        return longitude;
+-    }
+-
+-    public void setLongitude(Double longitude) {
+-        this.longitude = longitude;
+-    }
+-}
+diff --git a/taxicab/dto/route/RouteRequest.java b/taxicab/dto/route/RouteRequest.java
+deleted file mode 100644
+index d4ab32a..0000000
+--- a/taxicab/dto/route/RouteRequest.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-package com.taxicab.dto.route;
+-
+-import com.taxicab.dto.location.LocationRequest;
+-import jakarta.validation.Valid;
+-import jakarta.validation.constraints.NotNull;
+-
+-public class RouteRequest {
+-
+-    @NotNull(message = "Pickup is required")
+-    @Valid
+-    private LocationRequest pickup;
+-
+-    @NotNull(message = "Destination is required")
+-    @Valid
+-    private LocationRequest destination;
+-
+-    public RouteRequest() {
+-    }
+-
+-    public RouteRequest(LocationRequest pickup, LocationRequest destination) {
+-        this.pickup = pickup;
+-        this.destination = destination;
+-    }
+-
+-    public LocationRequest getPickup() {
+-        return pickup;
+-    }
+-
+-    public void setPickup(LocationRequest pickup) {
+-        this.pickup = pickup;
+-    }
+-
+-    public LocationRequest getDestination() {
+-        return destination;
+-    }
+-
+-    public void setDestination(LocationRequest destination) {
+-        this.destination = destination;
+-    }
+-}
+diff --git a/taxicab/dto/route/RouteResponse.java b/taxicab/dto/route/RouteResponse.java
+deleted file mode 100644
+index eb08ea2..0000000
+--- a/taxicab/dto/route/RouteResponse.java
++++ /dev/null
+@@ -1,107 +0,0 @@
+-package com.taxicab.dto.route;
+-
+-import com.taxicab.dto.location.LocationRequest;
+-import java.time.Instant;
+-import java.util.List;
+-
+-public class RouteResponse {
+-    private String id;
+-    private LocationRequest pickup;
+-    private LocationRequest destination;
+-    private double roadDistanceMetres;
+-    private double roadDistanceKilometres;
+-    private double durationSeconds;
+-    private double durationMinutes;
+-    private List<List<Double>> geometry;
+-    private Instant calculatedAt;
+-
+-    public RouteResponse() {
+-    }
+-
+-    public RouteResponse(String id, LocationRequest pickup, LocationRequest destination, double roadDistanceMetres,
+-                         double durationSeconds, List<List<Double>> geometry, Instant calculatedAt) {
+-        this.id = id;
+-        this.pickup = pickup;
+-        this.destination = destination;
+-        this.roadDistanceMetres = roadDistanceMetres;
+-        this.roadDistanceKilometres = roadDistanceMetres / 1000.0;
+-        this.durationSeconds = durationSeconds;
+-        this.durationMinutes = durationSeconds / 60.0;
+-        this.geometry = geometry;
+-        this.calculatedAt = calculatedAt;
+-    }
+-
+-    public String getId() {
+-        return id;
+-    }
+-
+-    public void setId(String id) {
+-        this.id = id;
+-    }
+-
+-    public LocationRequest getPickup() {
+-        return pickup;
+-    }
+-
+-    public void setPickup(LocationRequest pickup) {
+-        this.pickup = pickup;
+-    }
+-
+-    public LocationRequest getDestination() {
+-        return destination;
+-    }
+-
+-    public void setDestination(LocationRequest destination) {
+-        this.destination = destination;
+-    }
+-
+-    public double getRoadDistanceMetres() {
+-        return roadDistanceMetres;
+-    }
+-
+-    public void setRoadDistanceMetres(double roadDistanceMetres) {
+-        this.roadDistanceMetres = roadDistanceMetres;
+-        this.roadDistanceKilometres = roadDistanceMetres / 1000.0;
+-    }
+-
+-    public double getRoadDistanceKilometres() {
+-        return roadDistanceKilometres;
+-    }
+-
+-    public void setRoadDistanceKilometres(double roadDistanceKilometres) {
+-        this.roadDistanceKilometres = roadDistanceKilometres;
+-    }
+-
+-    public double getDurationSeconds() {
+-        return durationSeconds;
+-    }
+-
+-    public void setDurationSeconds(double durationSeconds) {
+-        this.durationSeconds = durationSeconds;
+-        this.durationMinutes = durationSeconds / 60.0;
+-    }
+-
+-    public double getDurationMinutes() {
+-        return durationMinutes;
+-    }
+-
+-    public void setDurationMinutes(double durationMinutes) {
+-        this.durationMinutes = durationMinutes;
+-    }
+-
+-    public List<List<Double>> getGeometry() {
+-        return geometry;
+-    }
+-
+-    public void setGeometry(List<List<Double>> geometry) {
+-        this.geometry = geometry;
+-    }
+-
+-    public Instant getCalculatedAt() {
+-        return calculatedAt;
+-    }
+-
+-    public void setCalculatedAt(Instant calculatedAt) {
+-        this.calculatedAt = calculatedAt;
+-    }
+-}
+diff --git a/taxicab/dto/tracking/CustomerTrackingResponse.java b/taxicab/dto/tracking/CustomerTrackingResponse.java
+deleted file mode 100644
+index 0f4fe47..0000000
+--- a/taxicab/dto/tracking/CustomerTrackingResponse.java
++++ /dev/null
+@@ -1,156 +0,0 @@
+-package com.taxicab.dto.tracking;
+-
+-import java.time.Instant;
+-
+-public class CustomerTrackingResponse {
+-    private Long bookingId;
+-    private String bookingStatus;
+-    private Long driverId;
+-    private Double driverLatitude;
+-    private Double driverLongitude;
+-    private Instant locationTimestamp;
+-    private Double speedKph;
+-    private Double distanceToPickupKm;
+-    private Double etaToPickupMinutes;
+-    private Double distanceTravelledKm;
+-    private Double distanceRemainingKm;
+-    private Double tripEtaMinutes;
+-    private Double elapsedMinutes;
+-    private Double averageSpeedKph;
+-
+-    public CustomerTrackingResponse() {
+-    }
+-
+-    public CustomerTrackingResponse(Long bookingId, String bookingStatus, Long driverId, Double driverLatitude,
+-                                   Double driverLongitude, Instant locationTimestamp, Double speedKph,
+-                                   Double distanceToPickupKm, Double etaToPickupMinutes, Double distanceTravelledKm,
+-                                   Double distanceRemainingKm, Double tripEtaMinutes, Double elapsedMinutes,
+-                                   Double averageSpeedKph) {
+-        this.bookingId = bookingId;
+-        this.bookingStatus = bookingStatus;
+-        this.driverId = driverId;
+-        this.driverLatitude = driverLatitude;
+-        this.driverLongitude = driverLongitude;
+-        this.locationTimestamp = locationTimestamp;
+-        this.speedKph = speedKph;
+-        this.distanceToPickupKm = distanceToPickupKm;
+-        this.etaToPickupMinutes = etaToPickupMinutes;
+-        this.distanceTravelledKm = distanceTravelledKm;
+-        this.distanceRemainingKm = distanceRemainingKm;
+-        this.tripEtaMinutes = tripEtaMinutes;
+-        this.elapsedMinutes = elapsedMinutes;
+-        this.averageSpeedKph = averageSpeedKph;
+-    }
+-
+-    public Long getBookingId() {
+-        return bookingId;
+-    }
+-
+-    public void setBookingId(Long bookingId) {
+-        this.bookingId = bookingId;
+-    }
+-
+-    public String getBookingStatus() {
+-        return bookingStatus;
+-    }
+-
+-    public void setBookingStatus(String bookingStatus) {
+-        this.bookingStatus = bookingStatus;
+-    }
+-
+-    public Long getDriverId() {
+-        return driverId;
+-    }
+-
+-    public void setDriverId(Long driverId) {
+-        this.driverId = driverId;
+-    }
+-
+-    public Double getDriverLatitude() {
+-        return driverLatitude;
+-    }
+-
+-    public void setDriverLatitude(Double driverLatitude) {
+-        this.driverLatitude = driverLatitude;
+-    }
+-
+-    public Double getDriverLongitude() {
+-        return driverLongitude;
+-    }
+-
+-    public void setDriverLongitude(Double driverLongitude) {
+-        this.driverLongitude = driverLongitude;
+-    }
+-
+-    public Instant getLocationTimestamp() {
+-        return locationTimestamp;
+-    }
+-
+-    public void setLocationTimestamp(Instant locationTimestamp) {
+-        this.locationTimestamp = locationTimestamp;
+-    }
+-
+-    public Double getSpeedKph() {
+-        return speedKph;
+-    }
+-
+-    public void setSpeedKph(Double speedKph) {
+-        this.speedKph = speedKph;
+-    }
+-
+-    public Double getDistanceToPickupKm() {
+-        return distanceToPickupKm;
+-    }
+-
+-    public void setDistanceToPickupKm(Double distanceToPickupKm) {
+-        this.distanceToPickupKm = distanceToPickupKm;
+-    }
+-
+-    public Double getEtaToPickupMinutes() {
+-        return etaToPickupMinutes;
+-    }
+-
+-    public void setEtaToPickupMinutes(Double etaToPickupMinutes) {
+-        this.etaToPickupMinutes = etaToPickupMinutes;
+-    }
+-
+-    public Double getDistanceTravelledKm() {
+-        return distanceTravelledKm;
+-    }
+-
+-    public void setDistanceTravelledKm(Double distanceTravelledKm) {
+-        this.distanceTravelledKm = distanceTravelledKm;
+-    }
+-
+-    public Double getDistanceRemainingKm() {
+-        return distanceRemainingKm;
+-    }
+-
+-    public void setDistanceRemainingKm(Double distanceRemainingKm) {
+-        this.distanceRemainingKm = distanceRemainingKm;
+-    }
+-
+-    public Double getTripEtaMinutes() {
+-        return tripEtaMinutes;
+-    }
+-
+-    public void setTripEtaMinutes(Double tripEtaMinutes) {
+-        this.tripEtaMinutes = tripEtaMinutes;
+-    }
+-
+-    public Double getElapsedMinutes() {
+-        return elapsedMinutes;
+-    }
+-
+-    public void setElapsedMinutes(Double elapsedMinutes) {
+-        this.elapsedMinutes = elapsedMinutes;
+-    }
+-
+-    public Double getAverageSpeedKph() {
+-        return averageSpeedKph;
+-    }
+-
+-    public void setAverageSpeedKph(Double averageSpeedKph) {
+-        this.averageSpeedKph = averageSpeedKph;
+-    }
+-}
+diff --git a/taxicab/dto/tracking/DriverLocationResponse.java b/taxicab/dto/tracking/DriverLocationResponse.java
+deleted file mode 100644
+index dddf5f8..0000000
+--- a/taxicab/dto/tracking/DriverLocationResponse.java
++++ /dev/null
+@@ -1,73 +0,0 @@
+-package com.taxicab.dto.tracking;
+-
+-import java.time.Instant;
+-
+-public class DriverLocationResponse {
+-    private Long bookingId;
+-    private Long driverId;
+-    private Double latitude;
+-    private Double longitude;
+-    private Instant locationTimestamp;
+-    private String status;
+-
+-    public DriverLocationResponse() {
+-    }
+-
+-    public DriverLocationResponse(Long bookingId, Long driverId, Double latitude, Double longitude,
+-                                Instant locationTimestamp, String status) {
+-        this.bookingId = bookingId;
+-        this.driverId = driverId;
+-        this.latitude = latitude;
+-        this.longitude = longitude;
+-        this.locationTimestamp = locationTimestamp;
+-        this.status = status;
+-    }
+-
+-    public Long getBookingId() {
+-        return bookingId;
+-    }
+-
+-    public void setBookingId(Long bookingId) {
+-        this.bookingId = bookingId;
+-    }
+-
+-    public Long getDriverId() {
+-        return driverId;
+-    }
+-
+-    public void setDriverId(Long driverId) {
+-        this.driverId = driverId;
+-    }
+-
+-    public Double getLatitude() {
+-        return latitude;
+-    }
+-
+-    public void setLatitude(Double latitude) {
+-        this.latitude = latitude;
+-    }
+-
+-    public Double getLongitude() {
+-        return longitude;
+-    }
+-
+-    public void setLongitude(Double longitude) {
+-        this.longitude = longitude;
+-    }
+-
+-    public Instant getLocationTimestamp() {
+-        return locationTimestamp;
+-    }
+-
+-    public void setLocationTimestamp(Instant locationTimestamp) {
+-        this.locationTimestamp = locationTimestamp;
+-    }
+-
+-    public String getStatus() {
+-        return status;
+-    }
+-
+-    public void setStatus(String status) {
+-        this.status = status;
+-    }
+-}
+diff --git a/taxicab/exception/BookingNotFoundException.java b/taxicab/exception/BookingNotFoundException.java
+deleted file mode 100644
+index 66c9049..0000000
+--- a/taxicab/exception/BookingNotFoundException.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.exception;
+-
+-public class BookingNotFoundException extends RuntimeException {
+-    public BookingNotFoundException(Long bookingId) {
+-        super("Booking not found: " + bookingId);
+-    }
+-}
+diff --git a/taxicab/exception/FareCalculationException.java b/taxicab/exception/FareCalculationException.java
+deleted file mode 100644
+index 4441c48..0000000
+--- a/taxicab/exception/FareCalculationException.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.exception;
+-
+-public class FareCalculationException extends RuntimeException {
+-    public FareCalculationException(String message) {
+-        super(message);
+-    }
+-}
+diff --git a/taxicab/exception/InvalidLocationException.java b/taxicab/exception/InvalidLocationException.java
+deleted file mode 100644
+index 531f1b2..0000000
+--- a/taxicab/exception/InvalidLocationException.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.exception;
+-
+-public class InvalidLocationException extends RuntimeException {
+-    public InvalidLocationException(String message) {
+-        super(message);
+-    }
+-}
+diff --git a/taxicab/exception/RouteCalculationException.java b/taxicab/exception/RouteCalculationException.java
+deleted file mode 100644
+index 77901d8..0000000
+--- a/taxicab/exception/RouteCalculationException.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.exception;
+-
+-public class RouteCalculationException extends RuntimeException {
+-    public RouteCalculationException(String message) {
+-        super(message);
+-    }
+-}
+diff --git a/taxicab/exception/TrackingUnavailableException.java b/taxicab/exception/TrackingUnavailableException.java
+deleted file mode 100644
+index c48dd5c..0000000
+--- a/taxicab/exception/TrackingUnavailableException.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.exception;
+-
+-public class TrackingUnavailableException extends RuntimeException {
+-    public TrackingUnavailableException(String message) {
+-        super(message);
+-    }
+-}
+diff --git a/taxicab/exception/UnauthorizedBookingAccessException.java b/taxicab/exception/UnauthorizedBookingAccessException.java
+deleted file mode 100644
+index 3104f4a..0000000
+--- a/taxicab/exception/UnauthorizedBookingAccessException.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.exception;
+-
+-public class UnauthorizedBookingAccessException extends RuntimeException {
+-    public UnauthorizedBookingAccessException(Long bookingId) {
+-        super("Unauthorized access to booking: " + bookingId);
+-    }
+-}
+diff --git a/taxicab/geo/CoordinateValidator.java b/taxicab/geo/CoordinateValidator.java
+deleted file mode 100644
+index 098ef5a..0000000
+--- a/taxicab/geo/CoordinateValidator.java
++++ /dev/null
+@@ -1,33 +0,0 @@
+-package com.taxicab.geo;
+-
+-import com.taxicab.dto.location.LocationRequest;
+-import com.taxicab.exception.InvalidLocationException;
+-
+-public final class CoordinateValidator {
+-
+-    private CoordinateValidator() {
+-    }
+-
+-    public static void validateLatitude(double latitude) {
+-        if (latitude < -90 || latitude > 90) {
+-            throw new InvalidLocationException("Latitude must be between -90 and 90 degrees.");
+-        }
+-    }
+-
+-    public static void validateLongitude(double longitude) {
+-        if (longitude < -180 || longitude > 180) {
+-            throw new InvalidLocationException("Longitude must be between -180 and 180 degrees.");
+-        }
+-    }
+-
+-    public static void validateLocationRequest(LocationRequest location) {
+-        if (location == null) {
+-            throw new InvalidLocationException("Location is required.");
+-        }
+-        if (location.getLatitude() == null || location.getLongitude() == null) {
+-            throw new InvalidLocationException("Latitude and longitude must both be provided.");
+-        }
+-        validateLatitude(location.getLatitude());
+-        validateLongitude(location.getLongitude());
+-    }
+-}
+diff --git a/taxicab/geo/HaversineDistanceCalculator.java b/taxicab/geo/HaversineDistanceCalculator.java
+deleted file mode 100644
+index 3d2a40f..0000000
+--- a/taxicab/geo/HaversineDistanceCalculator.java
++++ /dev/null
+@@ -1,19 +0,0 @@
+-package com.taxicab.geo;
+-
+-public final class HaversineDistanceCalculator {
+-
+-    private static final double EARTH_RADIUS_KM = 6371.0;
+-
+-    private HaversineDistanceCalculator() {
+-    }
+-
+-    public static double calculateKilometres(double lat1, double lon1, double lat2, double lon2) {
+-        double latDistance = Math.toRadians(lat2 - lat1);
+-        double lonDistance = Math.toRadians(lon2 - lon1);
+-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+-        return EARTH_RADIUS_KM * c;
+-    }
+-}
+diff --git a/taxicab/integration/driver/DriverAvailabilityClient.java b/taxicab/integration/driver/DriverAvailabilityClient.java
+deleted file mode 100644
+index b42a806..0000000
+--- a/taxicab/integration/driver/DriverAvailabilityClient.java
++++ /dev/null
+@@ -1,8 +0,0 @@
+-package com.taxicab.integration.driver;
+-
+-import com.taxicab.dto.booking.DriverAssignmentResponse;
+-
+-public interface DriverAvailabilityClient {
+-    DriverAssignmentResponse requestDriver(Long bookingId);
+-    DriverAssignmentResponse getAssignment(Long bookingId);
+-}
+diff --git a/taxicab/integration/driver/MockDriverAvailabilityClient.java b/taxicab/integration/driver/MockDriverAvailabilityClient.java
+deleted file mode 100644
+index d66c68b..0000000
+--- a/taxicab/integration/driver/MockDriverAvailabilityClient.java
++++ /dev/null
+@@ -1,36 +0,0 @@
+-package com.taxicab.integration.driver;
+-
+-import com.taxicab.dto.booking.DriverAssignmentResponse;
+-import org.springframework.stereotype.Component;
+-
+-import java.util.Map;
+-import java.util.concurrent.ConcurrentHashMap;
+-
+-@Component
+-public class MockDriverAvailabilityClient implements DriverAvailabilityClient {
+-
+-    private final Map<Long, DriverAssignmentResponse> assignments = new ConcurrentHashMap<>();
+-
+-    @Override
+-    public DriverAssignmentResponse requestDriver(Long bookingId) {
+-        if (bookingId == null) {
+-            return new DriverAssignmentResponse(null, null, "INVALID_BOOKING", false, "Booking ID is required");
+-        }
+-        DriverAssignmentResponse existing = assignments.get(bookingId);
+-        if (existing != null) {
+-            return existing;
+-        }
+-
+-        Long driverId = 200L + (bookingId % 10L);
+-        DriverAssignmentResponse response = new DriverAssignmentResponse(bookingId, driverId, "DRIVER_ASSIGNED", true,
+-                "Temporary mock assignment generated for development only.");
+-        assignments.put(bookingId, response);
+-        return response;
+-    }
+-
+-    @Override
+-    public DriverAssignmentResponse getAssignment(Long bookingId) {
+-        return assignments.getOrDefault(bookingId, new DriverAssignmentResponse(bookingId, null, "NO_DRIVER_AVAILABLE", false,
+-                "No driver is currently available in the mock system."));
+-    }
+-}
+diff --git a/taxicab/integration/maps/GeocodingClient.java b/taxicab/integration/maps/GeocodingClient.java
+deleted file mode 100644
+index 055f467..0000000
+--- a/taxicab/integration/maps/GeocodingClient.java
++++ /dev/null
+@@ -1,10 +0,0 @@
+-package com.taxicab.integration.maps;
+-
+-import com.taxicab.dto.location.LocationSuggestionResponse;
+-
+-import java.util.List;
+-
+-public interface GeocodingClient {
+-    List<LocationSuggestionResponse> search(String query);
+-    LocationSuggestionResponse reverseGeocode(double latitude, double longitude);
+-}
+diff --git a/taxicab/integration/maps/MapTilerGeocodingClient.java b/taxicab/integration/maps/MapTilerGeocodingClient.java
+deleted file mode 100644
+index 2cc9a02..0000000
+--- a/taxicab/integration/maps/MapTilerGeocodingClient.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-package com.taxicab.integration.maps;
+-
+-import com.taxicab.config.MapsConfig;
+-import com.taxicab.dto.location.LocationSuggestionResponse;
+-import org.springframework.stereotype.Component;
+-import org.springframework.web.client.RestTemplate;
+-
+-import java.util.Collections;
+-import java.util.List;
+-
+-@Component
+-public class MapTilerGeocodingClient implements GeocodingClient {
+-
+-    private final RestTemplate restTemplate;
+-    private final MapsConfig mapsConfig;
+-
+-    public MapTilerGeocodingClient(RestTemplate restTemplate, MapsConfig mapsConfig) {
+-        this.restTemplate = restTemplate;
+-        this.mapsConfig = mapsConfig;
+-    }
+-
+-    @Override
+-    public List<LocationSuggestionResponse> search(String query) {
+-        if (query == null || query.isBlank()) {
+-            return Collections.emptyList();
+-        }
+-        if (mapsConfig.getApiKey() == null || mapsConfig.getApiKey().isBlank()) {
+-            return List.of(new LocationSuggestionResponse("mock-1", query, query + ", Sri Lanka", 6.9271, 79.8612));
+-        }
+-        return Collections.emptyList();
+-    }
+-
+-    @Override
+-    public LocationSuggestionResponse reverseGeocode(double latitude, double longitude) {
+-        if (mapsConfig.getApiKey() == null || mapsConfig.getApiKey().isBlank()) {
+-            return new LocationSuggestionResponse("mock-reverse", "Reverse geocode", "Latitude " + latitude + ", Longitude " + longitude, latitude, longitude);
+-        }
+-        return new LocationSuggestionResponse("mock-reverse", "MapTiler result", "Coordinate lookup", latitude, longitude);
+-    }
+-}
+diff --git a/taxicab/integration/maps/MapTilerRoutingClient.java b/taxicab/integration/maps/MapTilerRoutingClient.java
+deleted file mode 100644
+index 3970e00..0000000
+--- a/taxicab/integration/maps/MapTilerRoutingClient.java
++++ /dev/null
+@@ -1,78 +0,0 @@
+-package com.taxicab.integration.maps;
+-
+-import com.taxicab.config.MapsConfig;
+-import com.taxicab.dto.location.LocationRequest;
+-import com.taxicab.dto.route.RouteRequest;
+-import com.taxicab.exception.RouteCalculationException;
+-import com.taxicab.model.Route;
+-import org.springframework.stereotype.Component;
+-import org.springframework.web.client.RestClientException;
+-import org.springframework.web.client.RestTemplate;
+-
+-import java.time.Instant;
+-import java.util.List;
+-
+-@Component
+-public class MapTilerRoutingClient implements RoutingClient {
+-
+-    private final RestTemplate restTemplate;
+-    private final MapsConfig mapsConfig;
+-
+-    public MapTilerRoutingClient(RestTemplate restTemplate, MapsConfig mapsConfig) {
+-        this.restTemplate = restTemplate;
+-        this.mapsConfig = mapsConfig;
+-    }
+-
+-    @Override
+-    public Route route(RouteRequest routeRequest) {
+-        if (routeRequest == null || routeRequest.getPickup() == null || routeRequest.getDestination() == null) {
+-            throw new RouteCalculationException("Routing request must include pickup and destination.");
+-        }
+-
+-        if (mapsConfig.getApiKey() == null || mapsConfig.getApiKey().isBlank()) {
+-            return buildMockRoute(routeRequest);
+-        }
+-
+-        try {
+-            return buildMockRoute(routeRequest);
+-        } catch (RestClientException ex) {
+-            throw new RouteCalculationException("MapTiler routing failed. Please verify the configured API key and provider support.");
+-        }
+-    }
+-
+-    private Route buildMockRoute(RouteRequest routeRequest) {
+-        LocationRequest pickup = routeRequest.getPickup();
+-        LocationRequest destination = routeRequest.getDestination();
+-
+-        double distanceMetres = calculateApproximateDistance(pickup.getLatitude(), pickup.getLongitude(),
+-                destination.getLatitude(), destination.getLongitude()) * 1000.0;
+-        double durationSeconds = distanceMetres / 9.0;
+-
+-        List<List<Double>> geometry = List.of(
+-                List.of(pickup.getLongitude(), pickup.getLatitude()),
+-                List.of((pickup.getLongitude() + destination.getLongitude()) / 2, (pickup.getLatitude() + destination.getLatitude()) / 2),
+-                List.of(destination.getLongitude(), destination.getLatitude())
+-        );
+-
+-        long routeId = System.currentTimeMillis() % 1000000L;
+-        return new Route(
+-                String.valueOf(routeId),
+-                new com.taxicab.model.Location(pickup.getLatitude(), pickup.getLongitude(), pickup.getAddress()),
+-                new com.taxicab.model.Location(destination.getLatitude(), destination.getLongitude(), destination.getAddress()),
+-                distanceMetres,
+-                durationSeconds,
+-                geometry,
+-                Instant.now()
+-        );
+-    }
+-
+-    private double calculateApproximateDistance(double lat1, double lon1, double lat2, double lon2) {
+-        double latDistance = Math.toRadians(lat2 - lat1);
+-        double lonDistance = Math.toRadians(lon2 - lon1);
+-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+-        return 6371.0 * c;
+-    }
+-}
+diff --git a/taxicab/integration/maps/RoutingClient.java b/taxicab/integration/maps/RoutingClient.java
+deleted file mode 100644
+index 4badb2f..0000000
+--- a/taxicab/integration/maps/RoutingClient.java
++++ /dev/null
+@@ -1,8 +0,0 @@
+-package com.taxicab.integration.maps;
+-
+-import com.taxicab.dto.route.RouteRequest;
+-import com.taxicab.model.Route;
+-
+-public interface RoutingClient {
+-    Route route(RouteRequest routeRequest);
+-}
+diff --git a/taxicab/model/Booking.java b/taxicab/model/Booking.java
+deleted file mode 100644
+index d9a56cb..0000000
+--- a/taxicab/model/Booking.java
++++ /dev/null
+@@ -1,92 +0,0 @@
+-package com.taxicab.model;
+-
+-import java.time.Instant;
+-
+-public class Booking {
+-    private Long id;
+-    private Long customerId;
+-    private Long driverId;
+-    private String status;
+-    private String vehicleCategory;
+-    private Long routeId;
+-    private Instant createdAt;
+-    private Instant updatedAt;
+-
+-    public Booking() {
+-    }
+-
+-    public Booking(Long id, Long customerId, Long driverId, String status, String vehicleCategory, Long routeId) {
+-        this.id = id;
+-        this.customerId = customerId;
+-        this.driverId = driverId;
+-        this.status = status;
+-        this.vehicleCategory = vehicleCategory;
+-        this.routeId = routeId;
+-        this.createdAt = Instant.now();
+-        this.updatedAt = Instant.now();
+-    }
+-
+-    public Long getId() {
+-        return id;
+-    }
+-
+-    public void setId(Long id) {
+-        this.id = id;
+-    }
+-
+-    public Long getCustomerId() {
+-        return customerId;
+-    }
+-
+-    public void setCustomerId(Long customerId) {
+-        this.customerId = customerId;
+-    }
+-
+-    public Long getDriverId() {
+-        return driverId;
+-    }
+-
+-    public void setDriverId(Long driverId) {
+-        this.driverId = driverId;
+-    }
+-
+-    public String getStatus() {
+-        return status;
+-    }
+-
+-    public void setStatus(String status) {
+-        this.status = status;
+-    }
+-
+-    public String getVehicleCategory() {
+-        return vehicleCategory;
+-    }
+-
+-    public void setVehicleCategory(String vehicleCategory) {
+-        this.vehicleCategory = vehicleCategory;
+-    }
+-
+-    public Long getRouteId() {
+-        return routeId;
+-    }
+-
+-    public void setRouteId(Long routeId) {
+-        this.routeId = routeId;
+-    }
+-
+-    public Instant getCreatedAt() {
+-        return createdAt;
+-    }
+-
+-    public void setCreatedAt(Instant createdAt) {
+-        this.createdAt = createdAt;
+-    }
+-
+-    public Instant getUpdatedAt() {
+-        return updatedAt;
+-    }
+-
+-    public void setUpdatedAt(Instant updatedAt) {
+-        this.updatedAt = updatedAt;
+-    }
+-}
+diff --git a/taxicab/model/CustomerRideTracking.java b/taxicab/model/CustomerRideTracking.java
+deleted file mode 100644
+index 68a5268..0000000
+--- a/taxicab/model/CustomerRideTracking.java
++++ /dev/null
+@@ -1,132 +0,0 @@
+-package com.taxicab.model;
+-
+-import java.time.Instant;
+-
+-public class CustomerRideTracking {
+-    private Long bookingId;
+-    private Long driverId;
+-    private String bookingStatus;
+-    private Double driverLatitude;
+-    private Double driverLongitude;
+-    private Instant locationTimestamp;
+-    private Double speedKph;
+-    private Double distanceToPickupKm;
+-    private Double etaToPickupMinutes;
+-    private Double distanceTravelledKm;
+-    private Double distanceRemainingKm;
+-    private Double tripEtaMinutes;
+-    private Double elapsedMinutes;
+-    private Double averageSpeedKph;
+-
+-    public Long getBookingId() {
+-        return bookingId;
+-    }
+-
+-    public void setBookingId(Long bookingId) {
+-        this.bookingId = bookingId;
+-    }
+-
+-    public Long getDriverId() {
+-        return driverId;
+-    }
+-
+-    public void setDriverId(Long driverId) {
+-        this.driverId = driverId;
+-    }
+-
+-    public String getBookingStatus() {
+-        return bookingStatus;
+-    }
+-
+-    public void setBookingStatus(String bookingStatus) {
+-        this.bookingStatus = bookingStatus;
+-    }
+-
+-    public Double getDriverLatitude() {
+-        return driverLatitude;
+-    }
+-
+-    public void setDriverLatitude(Double driverLatitude) {
+-        this.driverLatitude = driverLatitude;
+-    }
+-
+-    public Double getDriverLongitude() {
+-        return driverLongitude;
+-    }
+-
+-    public void setDriverLongitude(Double driverLongitude) {
+-        this.driverLongitude = driverLongitude;
+-    }
+-
+-    public Instant getLocationTimestamp() {
+-        return locationTimestamp;
+-    }
+-
+-    public void setLocationTimestamp(Instant locationTimestamp) {
+-        this.locationTimestamp = locationTimestamp;
+-    }
+-
+-    public Double getSpeedKph() {
+-        return speedKph;
+-    }
+-
+-    public void setSpeedKph(Double speedKph) {
+-        this.speedKph = speedKph;
+-    }
+-
+-    public Double getDistanceToPickupKm() {
+-        return distanceToPickupKm;
+-    }
+-
+-    public void setDistanceToPickupKm(Double distanceToPickupKm) {
+-        this.distanceToPickupKm = distanceToPickupKm;
+-    }
+-
+-    public Double getEtaToPickupMinutes() {
+-        return etaToPickupMinutes;
+-    }
+-
+-    public void setEtaToPickupMinutes(Double etaToPickupMinutes) {
+-        this.etaToPickupMinutes = etaToPickupMinutes;
+-    }
+-
+-    public Double getDistanceTravelledKm() {
+-        return distanceTravelledKm;
+-    }
+-
+-    public void setDistanceTravelledKm(Double distanceTravelledKm) {
+-        this.distanceTravelledKm = distanceTravelledKm;
+-    }
+-
+-    public Double getDistanceRemainingKm() {
+-        return distanceRemainingKm;
+-    }
+-
+-    public void setDistanceRemainingKm(Double distanceRemainingKm) {
+-        this.distanceRemainingKm = distanceRemainingKm;
+-    }
+-
+-    public Double getTripEtaMinutes() {
+-        return tripEtaMinutes;
+-    }
+-
+-    public void setTripEtaMinutes(Double tripEtaMinutes) {
+-        this.tripEtaMinutes = tripEtaMinutes;
+-    }
+-
+-    public Double getElapsedMinutes() {
+-        return elapsedMinutes;
+-    }
+-
+-    public void setElapsedMinutes(Double elapsedMinutes) {
+-        this.elapsedMinutes = elapsedMinutes;
+-    }
+-
+-    public Double getAverageSpeedKph() {
+-        return averageSpeedKph;
+-    }
+-
+-    public void setAverageSpeedKph(Double averageSpeedKph) {
+-        this.averageSpeedKph = averageSpeedKph;
+-    }
+-}
+diff --git a/taxicab/model/Fare.java b/taxicab/model/Fare.java
+deleted file mode 100644
+index 96ef61a..0000000
+--- a/taxicab/model/Fare.java
++++ /dev/null
+@@ -1,93 +0,0 @@
+-package com.taxicab.model;
+-
+-import java.time.Instant;
+-
+-public class Fare {
+-    private Long routeId;
+-    private VehicleCategory vehicleCategory;
+-    private double baseFare;
+-    private double distanceCharge;
+-    private double applicableCharges;
+-    private double estimatedFare;
+-    private String currency;
+-    private Instant calculatedAt;
+-
+-    public Fare() {
+-    }
+-
+-    public Fare(Long routeId, VehicleCategory vehicleCategory, double baseFare, double distanceCharge,
+-               double applicableCharges, double estimatedFare, String currency, Instant calculatedAt) {
+-        this.routeId = routeId;
+-        this.vehicleCategory = vehicleCategory;
+-        this.baseFare = baseFare;
+-        this.distanceCharge = distanceCharge;
+-        this.applicableCharges = applicableCharges;
+-        this.estimatedFare = estimatedFare;
+-        this.currency = currency;
+-        this.calculatedAt = calculatedAt;
+-    }
+-
+-    public Long getRouteId() {
+-        return routeId;
+-    }
+-
+-    public void setRouteId(Long routeId) {
+-        this.routeId = routeId;
+-    }
+-
+-    public VehicleCategory getVehicleCategory() {
+-        return vehicleCategory;
+-    }
+-
+-    public void setVehicleCategory(VehicleCategory vehicleCategory) {
+-        this.vehicleCategory = vehicleCategory;
+-    }
+-
+-    public double getBaseFare() {
+-        return baseFare;
+-    }
+-
+-    public void setBaseFare(double baseFare) {
+-        this.baseFare = baseFare;
+-    }
+-
+-    public double getDistanceCharge() {
+-        return distanceCharge;
+-    }
+-
+-    public void setDistanceCharge(double distanceCharge) {
+-        this.distanceCharge = distanceCharge;
+-    }
+-
+-    public double getApplicableCharges() {
+-        return applicableCharges;
+-    }
+-
+-    public void setApplicableCharges(double applicableCharges) {
+-        this.applicableCharges = applicableCharges;
+-    }
+-
+-    public double getEstimatedFare() {
+-        return estimatedFare;
+-    }
+-
+-    public void setEstimatedFare(double estimatedFare) {
+-        this.estimatedFare = estimatedFare;
+-    }
+-
+-    public String getCurrency() {
+-        return currency;
+-    }
+-
+-    public void setCurrency(String currency) {
+-        this.currency = currency;
+-    }
+-
+-    public Instant getCalculatedAt() {
+-        return calculatedAt;
+-    }
+-
+-    public void setCalculatedAt(Instant calculatedAt) {
+-        this.calculatedAt = calculatedAt;
+-    }
+-}
+diff --git a/taxicab/model/FareRule.java b/taxicab/model/FareRule.java
+deleted file mode 100644
+index cf2f8c1..0000000
+--- a/taxicab/model/FareRule.java
++++ /dev/null
+@@ -1,81 +0,0 @@
+-package com.taxicab.model;
+-
+-public class FareRule {
+-    private VehicleCategory vehicleCategory;
+-    private double baseFare;
+-    private double perKilometreRate;
+-    private double minimumFare;
+-    private double serviceCharge;
+-    private double peakHourMultiplier;
+-    private String currency;
+-
+-    public FareRule() {
+-    }
+-
+-    public FareRule(VehicleCategory vehicleCategory, double baseFare, double perKilometreRate,
+-                    double minimumFare, double serviceCharge, double peakHourMultiplier, String currency) {
+-        this.vehicleCategory = vehicleCategory;
+-        this.baseFare = baseFare;
+-        this.perKilometreRate = perKilometreRate;
+-        this.minimumFare = minimumFare;
+-        this.serviceCharge = serviceCharge;
+-        this.peakHourMultiplier = peakHourMultiplier;
+-        this.currency = currency;
+-    }
+-
+-    public VehicleCategory getVehicleCategory() {
+-        return vehicleCategory;
+-    }
+-
+-    public void setVehicleCategory(VehicleCategory vehicleCategory) {
+-        this.vehicleCategory = vehicleCategory;
+-    }
+-
+-    public double getBaseFare() {
+-        return baseFare;
+-    }
+-
+-    public void setBaseFare(double baseFare) {
+-        this.baseFare = baseFare;
+-    }
+-
+-    public double getPerKilometreRate() {
+-        return perKilometreRate;
+-    }
+-
+-    public void setPerKilometreRate(double perKilometreRate) {
+-        this.perKilometreRate = perKilometreRate;
+-    }
+-
+-    public double getMinimumFare() {
+-        return minimumFare;
+-    }
+-
+-    public void setMinimumFare(double minimumFare) {
+-        this.minimumFare = minimumFare;
+-    }
+-
+-    public double getServiceCharge() {
+-        return serviceCharge;
+-    }
+-
+-    public void setServiceCharge(double serviceCharge) {
+-        this.serviceCharge = serviceCharge;
+-    }
+-
+-    public double getPeakHourMultiplier() {
+-        return peakHourMultiplier;
+-    }
+-
+-    public void setPeakHourMultiplier(double peakHourMultiplier) {
+-        this.peakHourMultiplier = peakHourMultiplier;
+-    }
+-
+-    public String getCurrency() {
+-        return currency;
+-    }
+-
+-    public void setCurrency(String currency) {
+-        this.currency = currency;
+-    }
+-}
+diff --git a/taxicab/model/Location.java b/taxicab/model/Location.java
+deleted file mode 100644
+index eb3421a..0000000
+--- a/taxicab/model/Location.java
++++ /dev/null
+@@ -1,55 +0,0 @@
+-package com.taxicab.model;
+-
+-import com.taxicab.exception.InvalidLocationException;
+-
+-public class Location {
+-    private Double latitude;
+-    private Double longitude;
+-    private String address;
+-
+-    public Location() {
+-    }
+-
+-    public Location(Double latitude, Double longitude, String address) {
+-        this.latitude = latitude;
+-        this.longitude = longitude;
+-        this.address = address;
+-        validate();
+-    }
+-
+-    public Double getLatitude() {
+-        return latitude;
+-    }
+-
+-    public void setLatitude(Double latitude) {
+-        this.latitude = latitude;
+-    }
+-
+-    public Double getLongitude() {
+-        return longitude;
+-    }
+-
+-    public void setLongitude(Double longitude) {
+-        this.longitude = longitude;
+-    }
+-
+-    public String getAddress() {
+-        return address;
+-    }
+-
+-    public void setAddress(String address) {
+-        this.address = address;
+-    }
+-
+-    public void validate() {
+-        if (latitude == null || longitude == null) {
+-            throw new InvalidLocationException("Latitude and longitude are required.");
+-        }
+-        if (latitude < -90 || latitude > 90) {
+-            throw new InvalidLocationException("Latitude must be between -90 and 90 degrees.");
+-        }
+-        if (longitude < -180 || longitude > 180) {
+-            throw new InvalidLocationException("Longitude must be between -180 and 180 degrees.");
+-        }
+-    }
+-}
+diff --git a/taxicab/model/Route.java b/taxicab/model/Route.java
+deleted file mode 100644
+index f551d6e..0000000
+--- a/taxicab/model/Route.java
++++ /dev/null
+@@ -1,106 +0,0 @@
+-package com.taxicab.model;
+-
+-import java.time.Instant;
+-import java.util.List;
+-
+-public class Route {
+-    private String id;
+-    private Location pickup;
+-    private Location destination;
+-    private double roadDistanceMetres;
+-    private double roadDistanceKilometres;
+-    private double durationSeconds;
+-    private double durationMinutes;
+-    private List<List<Double>> geometry;
+-    private Instant calculatedAt;
+-
+-    public Route() {
+-    }
+-
+-    public Route(String id, Location pickup, Location destination, double roadDistanceMetres, double durationSeconds,
+-                 List<List<Double>> geometry, Instant calculatedAt) {
+-        this.id = id;
+-        this.pickup = pickup;
+-        this.destination = destination;
+-        this.roadDistanceMetres = roadDistanceMetres;
+-        this.roadDistanceKilometres = roadDistanceMetres / 1000.0;
+-        this.durationSeconds = durationSeconds;
+-        this.durationMinutes = durationSeconds / 60.0;
+-        this.geometry = geometry;
+-        this.calculatedAt = calculatedAt;
+-    }
+-
+-    public String getId() {
+-        return id;
+-    }
+-
+-    public void setId(String id) {
+-        this.id = id;
+-    }
+-
+-    public Location getPickup() {
+-        return pickup;
+-    }
+-
+-    public void setPickup(Location pickup) {
+-        this.pickup = pickup;
+-    }
+-
+-    public Location getDestination() {
+-        return destination;
+-    }
+-
+-    public void setDestination(Location destination) {
+-        this.destination = destination;
+-    }
+-
+-    public double getRoadDistanceMetres() {
+-        return roadDistanceMetres;
+-    }
+-
+-    public void setRoadDistanceMetres(double roadDistanceMetres) {
+-        this.roadDistanceMetres = roadDistanceMetres;
+-        this.roadDistanceKilometres = roadDistanceMetres / 1000.0;
+-    }
+-
+-    public double getRoadDistanceKilometres() {
+-        return roadDistanceKilometres;
+-    }
+-
+-    public void setRoadDistanceKilometres(double roadDistanceKilometres) {
+-        this.roadDistanceKilometres = roadDistanceKilometres;
+-    }
+-
+-    public double getDurationSeconds() {
+-        return durationSeconds;
+-    }
+-
+-    public void setDurationSeconds(double durationSeconds) {
+-        this.durationSeconds = durationSeconds;
+-        this.durationMinutes = durationSeconds / 60.0;
+-    }
+-
+-    public double getDurationMinutes() {
+-        return durationMinutes;
+-    }
+-
+-    public void setDurationMinutes(double durationMinutes) {
+-        this.durationMinutes = durationMinutes;
+-    }
+-
+-    public List<List<Double>> getGeometry() {
+-        return geometry;
+-    }
+-
+-    public void setGeometry(List<List<Double>> geometry) {
+-        this.geometry = geometry;
+-    }
+-
+-    public Instant getCalculatedAt() {
+-        return calculatedAt;
+-    }
+-
+-    public void setCalculatedAt(Instant calculatedAt) {
+-        this.calculatedAt = calculatedAt;
+-    }
+-}
+diff --git a/taxicab/model/VehicleCategory.java b/taxicab/model/VehicleCategory.java
+deleted file mode 100644
+index 42fec9c..0000000
+--- a/taxicab/model/VehicleCategory.java
++++ /dev/null
+@@ -1,9 +0,0 @@
+-package com.taxicab.model;
+-
+-public enum VehicleCategory {
+-    TUK_TUK,
+-    MINI,
+-    CAR,
+-    VAN,
+-    PREMIUM
+-}
+diff --git a/taxicab/repository/CustomerRideRepository.java b/taxicab/repository/CustomerRideRepository.java
+deleted file mode 100644
+index a1a2316..0000000
+--- a/taxicab/repository/CustomerRideRepository.java
++++ /dev/null
+@@ -1,10 +0,0 @@
+-package com.taxicab.repository;
+-
+-import com.taxicab.model.CustomerRideTracking;
+-
+-import java.util.Optional;
+-
+-public interface CustomerRideRepository {
+-    CustomerRideTracking save(CustomerRideTracking tracking);
+-    Optional<CustomerRideTracking> findByBookingId(Long bookingId);
+-}
+diff --git a/taxicab/repository/FareRepository.java b/taxicab/repository/FareRepository.java
+deleted file mode 100644
+index eca3e29..0000000
+--- a/taxicab/repository/FareRepository.java
++++ /dev/null
+@@ -1,10 +0,0 @@
+-package com.taxicab.repository;
+-
+-import com.taxicab.model.Fare;
+-
+-import java.util.Optional;
+-
+-public interface FareRepository {
+-    Fare save(Fare fare);
+-    Optional<Fare> findByRouteId(Long routeId);
+-}
+diff --git a/taxicab/repository/InMemoryCustomerRideRepository.java b/taxicab/repository/InMemoryCustomerRideRepository.java
+deleted file mode 100644
+index 2d849cb..0000000
+--- a/taxicab/repository/InMemoryCustomerRideRepository.java
++++ /dev/null
+@@ -1,27 +0,0 @@
+-package com.taxicab.repository;
+-
+-import com.taxicab.model.CustomerRideTracking;
+-import org.springframework.stereotype.Repository;
+-
+-import java.util.Map;
+-import java.util.Optional;
+-import java.util.concurrent.ConcurrentHashMap;
+-
+-@Repository
+-public class InMemoryCustomerRideRepository implements CustomerRideRepository {
+-    private final Map<Long, CustomerRideTracking> rides = new ConcurrentHashMap<>();
+-
+-    @Override
+-    public CustomerRideTracking save(CustomerRideTracking tracking) {
+-        if (tracking.getBookingId() == null) {
+-            throw new IllegalArgumentException("Booking ID is required for tracking data");
+-        }
+-        rides.put(tracking.getBookingId(), tracking);
+-        return tracking;
+-    }
+-
+-    @Override
+-    public Optional<CustomerRideTracking> findByBookingId(Long bookingId) {
+-        return Optional.ofNullable(rides.get(bookingId));
+-    }
+-}
+diff --git a/taxicab/repository/InMemoryFareRepository.java b/taxicab/repository/InMemoryFareRepository.java
+deleted file mode 100644
+index 4c954d9..0000000
+--- a/taxicab/repository/InMemoryFareRepository.java
++++ /dev/null
+@@ -1,27 +0,0 @@
+-package com.taxicab.repository;
+-
+-import com.taxicab.model.Fare;
+-import org.springframework.stereotype.Repository;
+-
+-import java.util.Map;
+-import java.util.Optional;
+-import java.util.concurrent.ConcurrentHashMap;
+-
+-@Repository
+-public class InMemoryFareRepository implements FareRepository {
+-    private final Map<Long, Fare> fares = new ConcurrentHashMap<>();
+-
+-    @Override
+-    public Fare save(Fare fare) {
+-        if (fare.getRouteId() == null) {
+-            throw new IllegalArgumentException("Fare route ID is required");
+-        }
+-        fares.put(fare.getRouteId(), fare);
+-        return fare;
+-    }
+-
+-    @Override
+-    public Optional<Fare> findByRouteId(Long routeId) {
+-        return Optional.ofNullable(fares.get(routeId));
+-    }
+-}
+diff --git a/taxicab/repository/InMemoryRouteRepository.java b/taxicab/repository/InMemoryRouteRepository.java
+deleted file mode 100644
+index aaaf0cf..0000000
+--- a/taxicab/repository/InMemoryRouteRepository.java
++++ /dev/null
+@@ -1,28 +0,0 @@
+-package com.taxicab.repository;
+-
+-import com.taxicab.model.Route;
+-import org.springframework.stereotype.Repository;
+-
+-import java.util.Map;
+-import java.util.Optional;
+-import java.util.concurrent.ConcurrentHashMap;
+-import java.util.concurrent.atomic.AtomicLong;
+-
+-@Repository
+-public class InMemoryRouteRepository implements RouteRepository {
+-    private final Map<Long, Route> routes = new ConcurrentHashMap<>();
+-    private final AtomicLong sequence = new AtomicLong(1);
+-
+-    @Override
+-    public Route save(Route route) {
+-        Long id = route.getId() == null ? sequence.getAndIncrement() : Long.parseLong(route.getId());
+-        route.setId(String.valueOf(id));
+-        routes.put(id, route);
+-        return route;
+-    }
+-
+-    @Override
+-    public Optional<Route> findById(Long id) {
+-        return Optional.ofNullable(routes.get(id));
+-    }
+-}
+diff --git a/taxicab/repository/RouteRepository.java b/taxicab/repository/RouteRepository.java
+deleted file mode 100644
+index 79971c8..0000000
+--- a/taxicab/repository/RouteRepository.java
++++ /dev/null
+@@ -1,10 +0,0 @@
+-package com.taxicab.repository;
+-
+-import com.taxicab.model.Route;
+-
+-import java.util.Optional;
+-
+-public interface RouteRepository {
+-    Route save(Route route);
+-    Optional<Route> findById(Long id);
+-}
+diff --git a/taxicab/service/CustomerBookingService.java b/taxicab/service/CustomerBookingService.java
+deleted file mode 100644
+index 07af399..0000000
+--- a/taxicab/service/CustomerBookingService.java
++++ /dev/null
+@@ -1,89 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.booking.BookingStatusResponse;
+-import com.taxicab.dto.booking.DriverAssignmentResponse;
+-import com.taxicab.exception.BookingNotFoundException;
+-import com.taxicab.exception.UnauthorizedBookingAccessException;
+-import com.taxicab.integration.driver.DriverAvailabilityClient;
+-import com.taxicab.integration.driver.MockDriverAvailabilityClient;
+-import com.taxicab.model.Booking;
+-import org.springframework.stereotype.Service;
+-
+-import java.util.Map;
+-import java.util.concurrent.ConcurrentHashMap;
+-import java.util.concurrent.atomic.AtomicLong;
+-
+-@Service
+-public class CustomerBookingService {
+-
+-    private final Map<Long, Booking> bookings = new ConcurrentHashMap<>();
+-    private final AtomicLong sequence = new AtomicLong(1L);
+-    private final DriverMatchingIntegrationService driverMatchingIntegrationService;
+-
+-    public CustomerBookingService(DriverMatchingIntegrationService driverMatchingIntegrationService) {
+-        this.driverMatchingIntegrationService = driverMatchingIntegrationService != null
+-                ? driverMatchingIntegrationService
+-                : new DriverMatchingIntegrationService() {
+-                    private final DriverAvailabilityClient client = new MockDriverAvailabilityClient();
+-
+-                    @Override
+-                    public DriverAssignmentResponse requestDriver(Long bookingId) {
+-                        return client.requestDriver(bookingId);
+-                    }
+-
+-                    @Override
+-                    public DriverAssignmentResponse getDriverAssignment(Long bookingId) {
+-                        return client.getAssignment(bookingId);
+-                    }
+-                };
+-        seedSampleBookings();
+-    }
+-
+-    public Booking createBooking(Long customerId, Long routeId, String vehicleType) {
+-        Booking booking = new Booking(sequence.getAndIncrement(), customerId, null, "REQUESTED", vehicleType, routeId);
+-        bookings.put(booking.getId(), booking);
+-        return booking;
+-    }
+-
+-    public Booking getBooking(Long bookingId) {
+-        Booking booking = bookings.get(bookingId);
+-        if (booking == null) {
+-            throwBookingMissing(bookingId);
+-        }
+-        return booking;
+-    }
+-
+-    public BookingStatusResponse getStatus(Long bookingId) {
+-        Booking booking = getBooking(bookingId);
+-        return new BookingStatusResponse(booking.getId(), booking.getStatus(), "Booking status retrieved successfully.", booking.getDriverId());
+-    }
+-
+-    public DriverAssignmentResponse findDriver(Long bookingId) {
+-        Booking booking = getBooking(bookingId);
+-        DriverAssignmentResponse assignment = driverMatchingIntegrationService.requestDriver(booking.getId());
+-        booking.setDriverId(assignment.getDriverId());
+-        booking.setStatus(assignment.isAssigned() ? "DRIVER_ASSIGNED" : "NO_DRIVER_AVAILABLE");
+-        booking.setUpdatedAt(java.time.Instant.now());
+-        return assignment;
+-    }
+-
+-    public boolean isBookingOwner(Long bookingId, Long customerId) {
+-        Booking booking = getBooking(bookingId);
+-        return booking.getCustomerId().equals(customerId);
+-    }
+-
+-    public void validateBookingOwnership(Long bookingId, Long customerId) {
+-        if (!isBookingOwner(bookingId, customerId)) {
+-            throw new UnauthorizedBookingAccessException(bookingId);
+-        }
+-    }
+-
+-    private Booking throwBookingMissing(Long bookingId) {
+-        throw new BookingNotFoundException(bookingId);
+-    }
+-
+-    private void seedSampleBookings() {
+-        Booking sample = new Booking(1L, 1001L, 2001L, "DRIVER_ASSIGNED", "CAR", 101L);
+-        bookings.put(sample.getId(), sample);
+-    }
+-}
+diff --git a/taxicab/service/CustomerFareService.java b/taxicab/service/CustomerFareService.java
+deleted file mode 100644
+index 094c451..0000000
+--- a/taxicab/service/CustomerFareService.java
++++ /dev/null
+@@ -1,83 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.config.FareConfig;
+-import com.taxicab.dto.fare.FareRequest;
+-import com.taxicab.dto.fare.FareResponse;
+-import com.taxicab.exception.FareCalculationException;
+-import com.taxicab.model.Fare;
+-import com.taxicab.model.FareRule;
+-import com.taxicab.model.Route;
+-import com.taxicab.model.VehicleCategory;
+-import com.taxicab.repository.FareRepository;
+-import com.taxicab.repository.RouteRepository;
+-import com.taxicab.strategy.FareCalculationStrategy;
+-import org.springframework.beans.factory.annotation.Qualifier;
+-import org.springframework.stereotype.Service;
+-
+-import java.time.Instant;
+-
+-@Service
+-public class CustomerFareService {
+-
+-    private final FareRepository fareRepository;
+-    private final RouteRepository routeRepository;
+-    private final FareConfig fareConfig;
+-    private final FareCalculationStrategy fareCalculationStrategy;
+-
+-    public CustomerFareService(FareRepository fareRepository, RouteRepository routeRepository,
+-                              FareConfig fareConfig, @Qualifier("vehicleFareStrategy") FareCalculationStrategy fareCalculationStrategy) {
+-        this.fareRepository = fareRepository;
+-        this.routeRepository = routeRepository;
+-        this.fareConfig = fareConfig;
+-        this.fareCalculationStrategy = fareCalculationStrategy;
+-    }
+-
+-    public FareResponse calculateFare(FareRequest request) {
+-        if (request == null) {
+-            throw new FareCalculationException("Fare request is required.");
+-        }
+-        if (request.getRouteId() == null) {
+-            throw new FareCalculationException("Route ID is required to calculate fare.");
+-        }
+-        if (request.getVehicleCategory() == null) {
+-            throw new FareCalculationException("Vehicle category is required.");
+-        }
+-
+-        Route route = routeRepository.findById(request.getRouteId())
+-                .orElseThrow(() -> new FareCalculationException("Route not found for fare calculation."));
+-
+-        FareRule rule = fareConfig.getRule(request.getVehicleCategory());
+-        double distanceKilometres = route.getRoadDistanceKilometres();
+-        if (distanceKilometres <= 0) {
+-            throw new FareCalculationException("Route distance must be positive to estimate a fare.");
+-        }
+-
+-        double distanceCharge = distanceKilometres * rule.getPerKilometreRate();
+-        double applicableCharges = rule.getServiceCharge();
+-        if (request.isPeakHour()) {
+-            double multiplier = rule.getPeakHourMultiplier();
+-            distanceCharge *= multiplier;
+-            applicableCharges += (rule.getBaseFare() * (multiplier - 1.0));
+-        }
+-
+-        double estimate = fareCalculationStrategy.calculate(distanceKilometres, rule, request.isPeakHour());
+-        double rounded = Math.round(estimate * 100.0) / 100.0;
+-        Fare fare = new Fare(route.getId() == null ? request.getRouteId() : Long.parseLong(route.getId()), request.getVehicleCategory(),
+-                rule.getBaseFare(), distanceCharge, applicableCharges, rounded, fareConfig.getCurrency(), Instant.now());
+-        fareRepository.save(fare);
+-
+-        return new FareResponse(
+-                request.getVehicleCategory(),
+-                rule.getBaseFare(),
+-                distanceCharge,
+-                applicableCharges,
+-                rounded,
+-                fareConfig.getCurrency(),
+-                fare.getCalculatedAt()
+-        );
+-    }
+-
+-    public FareResponse calculateFareForVehicle(Long routeId, VehicleCategory vehicleCategory, boolean peakHour) {
+-        return calculateFare(new FareRequest(routeId, vehicleCategory, peakHour));
+-    }
+-}
+diff --git a/taxicab/service/CustomerLocationService.java b/taxicab/service/CustomerLocationService.java
+deleted file mode 100644
+index a4155e1..0000000
+--- a/taxicab/service/CustomerLocationService.java
++++ /dev/null
+@@ -1,28 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.location.LocationRequest;
+-import com.taxicab.dto.location.LocationResponse;
+-import com.taxicab.dto.location.LocationSuggestionResponse;
+-import com.taxicab.geo.CoordinateValidator;
+-import org.springframework.stereotype.Service;
+-
+-import java.util.List;
+-
+-@Service
+-public class CustomerLocationService {
+-
+-    private final GeocodingService geocodingService;
+-
+-    public CustomerLocationService(GeocodingService geocodingService) {
+-        this.geocodingService = geocodingService;
+-    }
+-
+-    public List<LocationSuggestionResponse> searchLocations(String query) {
+-        return geocodingService.searchLocations(query);
+-    }
+-
+-    public LocationResponse reverseGeocode(LocationRequest location) {
+-        CoordinateValidator.validateLocationRequest(location);
+-        return geocodingService.reverseGeocode(location.getLatitude(), location.getLongitude());
+-    }
+-}
+diff --git a/taxicab/service/CustomerRouteService.java b/taxicab/service/CustomerRouteService.java
+deleted file mode 100644
+index b1ced5d..0000000
+--- a/taxicab/service/CustomerRouteService.java
++++ /dev/null
+@@ -1,62 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.location.LocationRequest;
+-import com.taxicab.dto.route.RouteRequest;
+-import com.taxicab.dto.route.RouteResponse;
+-import com.taxicab.exception.RouteCalculationException;
+-import com.taxicab.geo.CoordinateValidator;
+-import com.taxicab.integration.maps.RoutingClient;
+-import com.taxicab.model.Route;
+-import com.taxicab.repository.RouteRepository;
+-import org.springframework.stereotype.Service;
+-
+-import java.util.List;
+-
+-@Service
+-public class CustomerRouteService {
+-
+-    private final RoutingClient routingClient;
+-    private final RouteRepository routeRepository;
+-    private final DistanceService distanceService;
+-    private final EtaService etaService;
+-
+-    public CustomerRouteService(RoutingClient routingClient, RouteRepository routeRepository,
+-                               DistanceService distanceService, EtaService etaService) {
+-        this.routingClient = routingClient;
+-        this.routeRepository = routeRepository;
+-        this.distanceService = distanceService;
+-        this.etaService = etaService;
+-    }
+-
+-    public RouteResponse calculate(RouteRequest request) {
+-        if (request == null) {
+-            throw new RouteCalculationException("Route request is required.");
+-        }
+-        CoordinateValidator.validateLocationRequest(request.getPickup());
+-        CoordinateValidator.validateLocationRequest(request.getDestination());
+-
+-        Route route = routingClient.route(request);
+-        if (route == null || route.getPickup() == null || route.getDestination() == null) {
+-            throw new RouteCalculationException("No valid road route could be calculated.");
+-        }
+-
+-        distanceService.validateDistance(route.getRoadDistanceMetres());
+-        double durationSeconds = route.getDurationSeconds();
+-        if (durationSeconds < 0) {
+-            throw new RouteCalculationException("The route duration is invalid.");
+-        }
+-
+-        Route savedRoute = routeRepository.save(route);
+-        LocationRequest pickup = new LocationRequest(savedRoute.getPickup().getLatitude(), savedRoute.getPickup().getLongitude(), savedRoute.getPickup().getAddress());
+-        LocationRequest destination = new LocationRequest(savedRoute.getDestination().getLatitude(), savedRoute.getDestination().getLongitude(), savedRoute.getDestination().getAddress());
+-        return new RouteResponse(
+-                savedRoute.getId(),
+-                pickup,
+-                destination,
+-                savedRoute.getRoadDistanceMetres(),
+-                savedRoute.getDurationSeconds(),
+-                savedRoute.getGeometry() == null ? List.of() : savedRoute.getGeometry(),
+-                savedRoute.getCalculatedAt()
+-        );
+-    }
+-}
+diff --git a/taxicab/service/CustomerTrackingService.java b/taxicab/service/CustomerTrackingService.java
+deleted file mode 100644
+index a57cbc2..0000000
+--- a/taxicab/service/CustomerTrackingService.java
++++ /dev/null
+@@ -1,69 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.tracking.CustomerTrackingResponse;
+-import com.taxicab.dto.tracking.DriverLocationResponse;
+-import com.taxicab.exception.TrackingUnavailableException;
+-import com.taxicab.model.Booking;
+-import com.taxicab.model.CustomerRideTracking;
+-import com.taxicab.repository.CustomerRideRepository;
+-import org.springframework.stereotype.Service;
+-
+-import java.time.Instant;
+-import java.util.Optional;
+-
+-@Service
+-public class CustomerTrackingService {
+-
+-    private final CustomerBookingService customerBookingService;
+-    private final CustomerRideRepository customerRideRepository;
+-
+-    public CustomerTrackingService(CustomerBookingService customerBookingService, CustomerRideRepository customerRideRepository) {
+-        this.customerBookingService = customerBookingService;
+-        this.customerRideRepository = customerRideRepository;
+-    }
+-
+-    public DriverLocationResponse getDriverLocation(Long bookingId, Long customerId) {
+-        customerBookingService.validateBookingOwnership(bookingId, customerId);
+-        Booking booking = customerBookingService.getBooking(bookingId);
+-        Optional<CustomerRideTracking> ride = customerRideRepository.findByBookingId(bookingId);
+-        if (ride.isEmpty()) {
+-            return new DriverLocationResponse(bookingId, booking.getDriverId(), 6.9271, 79.8612, Instant.now(), booking.getStatus());
+-        }
+-        CustomerRideTracking tracking = ride.get();
+-        return new DriverLocationResponse(
+-                bookingId,
+-                tracking.getDriverId(),
+-                tracking.getDriverLatitude(),
+-                tracking.getDriverLongitude(),
+-                tracking.getLocationTimestamp(),
+-                booking.getStatus()
+-        );
+-    }
+-
+-    public CustomerTrackingResponse getTracking(Long bookingId, Long customerId) {
+-        customerBookingService.validateBookingOwnership(bookingId, customerId);
+-        Booking booking = customerBookingService.getBooking(bookingId);
+-        Optional<CustomerRideTracking> ride = customerRideRepository.findByBookingId(bookingId);
+-        if (ride.isEmpty()) {
+-            throw new TrackingUnavailableException("Driver tracking details are not available for booking " + bookingId + ".");
+-        }
+-
+-        CustomerRideTracking tracking = ride.get();
+-        return new CustomerTrackingResponse(
+-                bookingId,
+-                booking.getStatus(),
+-                tracking.getDriverId(),
+-                tracking.getDriverLatitude(),
+-                tracking.getDriverLongitude(),
+-                tracking.getLocationTimestamp(),
+-                tracking.getSpeedKph(),
+-                tracking.getDistanceToPickupKm(),
+-                tracking.getEtaToPickupMinutes(),
+-                tracking.getDistanceTravelledKm(),
+-                tracking.getDistanceRemainingKm(),
+-                tracking.getTripEtaMinutes(),
+-                tracking.getElapsedMinutes(),
+-                tracking.getAverageSpeedKph()
+-        );
+-    }
+-}
+diff --git a/taxicab/service/DistanceService.java b/taxicab/service/DistanceService.java
+deleted file mode 100644
+index ba1f1d8..0000000
+--- a/taxicab/service/DistanceService.java
++++ /dev/null
+@@ -1,22 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.exception.RouteCalculationException;
+-import org.springframework.stereotype.Service;
+-
+-@Service
+-public class DistanceService {
+-
+-    public double metresToKilometres(double metres) {
+-        if (metres < 0) {
+-            throw new RouteCalculationException("Route distance cannot be negative.");
+-        }
+-        return metres / 1000.0;
+-    }
+-
+-    public double validateDistance(double metres) {
+-        if (metres <= 0) {
+-            throw new RouteCalculationException("Road distance must be greater than zero.");
+-        }
+-        return metres;
+-    }
+-}
+diff --git a/taxicab/service/DriverMatchingIntegrationService.java b/taxicab/service/DriverMatchingIntegrationService.java
+deleted file mode 100644
+index d56e688..0000000
+--- a/taxicab/service/DriverMatchingIntegrationService.java
++++ /dev/null
+@@ -1,8 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.booking.DriverAssignmentResponse;
+-
+-public interface DriverMatchingIntegrationService {
+-    DriverAssignmentResponse requestDriver(Long bookingId);
+-    DriverAssignmentResponse getDriverAssignment(Long bookingId);
+-}
+diff --git a/taxicab/service/EtaService.java b/taxicab/service/EtaService.java
+deleted file mode 100644
+index 15e7c34..0000000
+--- a/taxicab/service/EtaService.java
++++ /dev/null
+@@ -1,15 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.exception.RouteCalculationException;
+-import org.springframework.stereotype.Service;
+-
+-@Service
+-public class EtaService {
+-
+-    public double secondsToMinutes(double seconds) {
+-        if (seconds < 0) {
+-            throw new RouteCalculationException("Duration cannot be negative.");
+-        }
+-        return seconds / 60.0;
+-    }
+-}
+diff --git a/taxicab/service/GeocodingService.java b/taxicab/service/GeocodingService.java
+deleted file mode 100644
+index 10f35fc..0000000
+--- a/taxicab/service/GeocodingService.java
++++ /dev/null
+@@ -1,39 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.location.LocationResponse;
+-import com.taxicab.dto.location.LocationSuggestionResponse;
+-import com.taxicab.exception.InvalidLocationException;
+-import com.taxicab.geo.CoordinateValidator;
+-import com.taxicab.integration.maps.GeocodingClient;
+-import org.springframework.stereotype.Service;
+-
+-import java.util.List;
+-
+-@Service
+-public class GeocodingService {
+-
+-    private final GeocodingClient geocodingClient;
+-
+-    public GeocodingService(GeocodingClient geocodingClient) {
+-        this.geocodingClient = geocodingClient;
+-    }
+-
+-    public List<LocationSuggestionResponse> searchLocations(String query) {
+-        if (query == null || query.isBlank()) {
+-            throw new InvalidLocationException("Search query is required.");
+-        }
+-        return geocodingClient.search(query);
+-    }
+-
+-    public LocationResponse reverseGeocode(double latitude, double longitude) {
+-        CoordinateValidator.validateLatitude(latitude);
+-        CoordinateValidator.validateLongitude(longitude);
+-        LocationSuggestionResponse response = geocodingClient.reverseGeocode(latitude, longitude);
+-        return new LocationResponse(
+-                response.getLatitude(),
+-                response.getLongitude(),
+-                response.getName(),
+-                response.getFormattedAddress()
+-        );
+-    }
+-}
+diff --git a/taxicab/service/MockDriverMatchingIntegrationService.java b/taxicab/service/MockDriverMatchingIntegrationService.java
+deleted file mode 100644
+index e7d2524..0000000
+--- a/taxicab/service/MockDriverMatchingIntegrationService.java
++++ /dev/null
+@@ -1,32 +0,0 @@
+-package com.taxicab.service;
+-
+-import com.taxicab.dto.booking.DriverAssignmentResponse;
+-import com.taxicab.exception.BookingNotFoundException;
+-import com.taxicab.integration.driver.DriverAvailabilityClient;
+-import org.springframework.stereotype.Service;
+-
+-@Service
+-public class MockDriverMatchingIntegrationService implements DriverMatchingIntegrationService {
+-
+-    private final DriverAvailabilityClient driverAvailabilityClient;
+-
+-    public MockDriverMatchingIntegrationService(DriverAvailabilityClient driverAvailabilityClient) {
+-        this.driverAvailabilityClient = driverAvailabilityClient;
+-    }
+-
+-    @Override
+-    public DriverAssignmentResponse requestDriver(Long bookingId) {
+-        if (bookingId == null) {
+-            throw new BookingNotFoundException(null);
+-        }
+-        return driverAvailabilityClient.requestDriver(bookingId);
+-    }
+-
+-    @Override
+-    public DriverAssignmentResponse getDriverAssignment(Long bookingId) {
+-        if (bookingId == null) {
+-            throw new BookingNotFoundException(null);
+-        }
+-        return driverAvailabilityClient.getAssignment(bookingId);
+-    }
+-}
+diff --git a/taxicab/strategy/FareCalculationStrategy.java b/taxicab/strategy/FareCalculationStrategy.java
+deleted file mode 100644
+index 09e8d3c..0000000
+--- a/taxicab/strategy/FareCalculationStrategy.java
++++ /dev/null
+@@ -1,7 +0,0 @@
+-package com.taxicab.strategy;
+-
+-import com.taxicab.model.FareRule;
+-
+-public interface FareCalculationStrategy {
+-    double calculate(double distanceKilometres, FareRule rule, boolean peakHour);
+-}
+diff --git a/taxicab/strategy/StandardFareStrategy.java b/taxicab/strategy/StandardFareStrategy.java
+deleted file mode 100644
+index 58666f1..0000000
+--- a/taxicab/strategy/StandardFareStrategy.java
++++ /dev/null
+@@ -1,20 +0,0 @@
+-package com.taxicab.strategy;
+-
+-import com.taxicab.model.FareRule;
+-import org.springframework.stereotype.Component;
+-
+-@Component
+-public class StandardFareStrategy implements FareCalculationStrategy {
+-
+-    @Override
+-    public double calculate(double distanceKilometres, FareRule rule, boolean peakHour) {
+-        if (rule == null) {
+-            throw new IllegalArgumentException("Fare rule is required");
+-        }
+-        double multiplier = peakHour && rule.getPeakHourMultiplier() > 1.0 ? rule.getPeakHourMultiplier() : 1.0;
+-        double distanceCharge = distanceKilometres * rule.getPerKilometreRate() * multiplier;
+-        double baseCharge = rule.getBaseFare();
+-        double total = baseCharge + distanceCharge + rule.getServiceCharge();
+-        return Math.max(total, rule.getMinimumFare());
+-    }
+-}
+diff --git a/taxicab/strategy/VehicleFareStrategy.java b/taxicab/strategy/VehicleFareStrategy.java
+deleted file mode 100644
+index 2fa8d26..0000000
+--- a/taxicab/strategy/VehicleFareStrategy.java
++++ /dev/null
+@@ -1,22 +0,0 @@
+-package com.taxicab.strategy;
+-
+-import com.taxicab.model.FareRule;
+-import org.springframework.context.annotation.Primary;
+-import org.springframework.stereotype.Component;
+-
+-@Primary
+-@Component
+-public class VehicleFareStrategy implements FareCalculationStrategy {
+-
+-    @Override
+-    public double calculate(double distanceKilometres, FareRule rule, boolean peakHour) {
+-        if (rule == null) {
+-            throw new IllegalArgumentException("Fare rule is required");
+-        }
+-        double multiplier = peakHour ? rule.getPeakHourMultiplier() : 1.0;
+-        double distanceCharge = distanceKilometres * rule.getPerKilometreRate() * multiplier;
+-        double adjustedBaseFare = rule.getBaseFare() * multiplier;
+-        double total = adjustedBaseFare + distanceCharge + rule.getServiceCharge();
+-        return Math.max(total, rule.getMinimumFare());
+-    }
+-}
