@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Application status | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <section class="form-card" th:if="${driverProfile.applicationStatus.name() == 'PENDING'}">
+        <p class="eyebrow">APPLICATION UNDER REVIEW</p>
+        <h1>Thanks for your patience.</h1>
+        <p class="muted">Your documents are with our driver verification team. Your dashboard and ride offers will be available after approval.</p>
+        <span class="status-pill status-online">PENDING</span>
+    </section>
+    <section class="form-card" th:if="${driverProfile.applicationStatus.name() == 'REJECTED' or driverProfile.applicationStatus.name() == 'RESUBMISSION_REQUIRED'}">
+        <p class="eyebrow">APPLICATION UPDATE</p>
+        <h1>Some changes are needed.</h1>
+        <p class="muted" th:text="${driverProfile.rejectionReason}">Please update the information or documents listed in the review note.</p>
+        <a class="button" th:href="@{/driver/application}">Review and resubmit</a>
+    </section>
+    <section class="form-card" th:if="${driverProfile.suspended}">
+        <p class="eyebrow">ACCOUNT STATUS</p>
+        <h1>Your driver account is suspended.</h1>
+        <p class="muted">You cannot access the driver dashboard or accept ride offers while your account is suspended. Contact the operations team for assistance.</p>
+    </section>
+    <section class="form-card" th:if="${driverProfile.applicationStatus.name() == 'NOT_SUBMITTED'}">
+        <p class="eyebrow">GET STARTED</p>
+        <h1>Complete your driver application.</h1>
+        <a class="button" th:href="@{/driver/application}">Continue application</a>
+    </section>
+</main>
+</body>
+</html>

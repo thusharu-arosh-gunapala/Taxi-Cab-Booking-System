@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Driver application | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="auth-shell">
+    <aside class="auth-promo">
+        <a class="brand auth-promo-brand" th:href="@{/}">
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span class="brand-name">Serendib <span>Ride</span></span>
+        </a>
+        <div>
+            <p class="eyebrow">DRIVE WITH US</p>
+            <h2>Bring your city closer, one ride at a time.</h2>
+            <p>Complete your personal, licence and vehicle details. Our team reviews your application before you can receive rides.</p>
+            <div class="auth-benefits">
+                <div class="auth-benefit"><span class="proof-check" aria-hidden="true">✓</span> Verification before going online</div>
+                <div class="auth-benefit"><span class="proof-check" aria-hidden="true">✓</span> Your details handled in one place</div>
+            </div>
+        </div>
+        <p class="disclaimer">Applications remain offline until verified by an administrator.</p>
+    </aside>
+    <section class="auth-content">
+        <div class="form-card">
+            <div th:if="${applicationSubmitted}" class="application-success">
+                <span class="success-icon" aria-hidden="true">✓</span>
+                <p class="eyebrow">APPLICATION RECEIVED</p>
+                <h1>Thanks for applying.</h1>
+                <p class="muted">Your driver application is pending review. Keep your email available for the administration team's decision.</p>
+                <p class="muted">Already approved? <a th:href="@{/driver/login}">Driver sign in</a></p>
+                <a class="button button-secondary" th:href="@{/}">Back to home</a>
+            </div>
+            <div th:unless="${applicationSubmitted}">
+                <p class="eyebrow">DRIVER APPLICATION</p>
+                <h1>Apply to drive</h1>
+                <p class="muted">Complete all details and upload clear JPG, PNG, or WebP images (5 MB maximum per image).</p>
+                <p class="muted">Signed in as <strong th:text="${driverEmail}">driver@example.com</strong></p>
+                <form th:action="@{/driver/application}" th:object="${driverApplication}" method="post"
+                      enctype="multipart/form-data" class="stack-form">
+                    <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+                    <h2 class="form-section-title">Driver details</h2>
+                    <label for="name">Full name</label>
+                    <input id="name" th:field="*{name}" autocomplete="name" maxlength="120" required placeholder="Your full name">
+                    <p class="field-error" th:errors="*{name}"></p>
+                    <label for="phone">Phone number</label>
+                    <input id="phone" th:field="*{phone}" type="tel" autocomplete="tel" maxlength="32" required placeholder="+94 77 123 4567">
+                    <p class="field-error" th:errors="*{phone}"></p>
+                    <label for="dateOfBirth">Date of birth</label>
+                    <input id="dateOfBirth" th:field="*{dateOfBirth}" type="date" required>
+                    <p class="field-error" th:errors="*{dateOfBirth}"></p>
+                    <label for="nicNumber">NIC number</label>
+                    <input id="nicNumber" th:field="*{nicNumber}" maxlength="12" required placeholder="NIC number">
+                    <p class="field-error" th:errors="*{nicNumber}"></p>
+                    <label for="address">Residential address</label>
+                    <textarea id="address" th:field="*{address}" maxlength="255" required></textarea>
+                    <p class="field-error" th:errors="*{address}"></p>
+                    <label for="profilePhoto">Profile photo</label>
+                    <input id="profilePhoto" th:field="*{profilePhoto}" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <label for="licenseNumber">Driving license number</label>
+                    <input id="licenseNumber" th:field="*{licenseNumber}" maxlength="64" required placeholder="License number">
+                    <p class="field-error" th:errors="*{licenseNumber}"></p>
+                    <label for="licenseExpiryDate">Driving license expiry date</label>
+                    <input id="licenseExpiryDate" th:field="*{licenseExpiryDate}" type="date" required>
+                    <p class="field-error" th:errors="*{licenseExpiryDate}"></p>
+                    <label for="licenseImage">Driving license image</label>
+                    <input id="licenseImage" th:field="*{licenseImage}" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <h2 class="form-section-title">Vehicle details</h2>
+                    <label for="vehicleCategory">Vehicle category</label>
+                    <select id="vehicleCategory" th:field="*{vehicleCategory}" required>
+                        <option value="">Choose category</option>
+                        <option th:each="category : ${vehicleCategories}" th:value="${category}"
+                                th:text="${#strings.replace(category.name(), '_', ' ')}"></option>
+                    </select>
+                    <p class="field-error" th:errors="*{vehicleCategory}"></p>
+                    <label for="vehicleBrand">Vehicle brand</label>
+                    <input id="vehicleBrand" th:field="*{vehicleBrand}" maxlength="80" required placeholder="e.g. Toyota">
+                    <p class="field-error" th:errors="*{vehicleBrand}"></p>
+                    <label for="vehicleModel">Make and model</label>
+                    <input id="vehicleModel" th:field="*{vehicleModel}" maxlength="120" required placeholder="e.g. Toyota Prius">
+                    <p class="field-error" th:errors="*{vehicleModel}"></p>
+                    <label for="vehicleYear">Manufacturing year</label>
+                    <input id="vehicleYear" th:field="*{vehicleYear}" type="number" min="1980" max="2100" required>
+                    <p class="field-error" th:errors="*{vehicleYear}"></p>
+                    <label for="plateNumber">Registration plate</label>
+                    <input id="plateNumber" th:field="*{plateNumber}" maxlength="20" required placeholder="e.g. ABC-1234">
+                    <p class="field-error" th:errors="*{plateNumber}"></p>
+                    <label for="vehicleColor">Vehicle color</label>
+                    <input id="vehicleColor" th:field="*{vehicleColor}" maxlength="40" required placeholder="e.g. Silver">
+                    <p class="field-error" th:errors="*{vehicleColor}"></p>
+                    <label for="vehiclePhoto">Vehicle photo</label>
+                    <input id="vehiclePhoto" th:field="*{vehiclePhoto}" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <label for="vehicleRegistrationDocument">Vehicle registration document</label>
+                    <input id="vehicleRegistrationDocument" th:field="*{vehicleRegistrationDocument}" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <p class="muted">Review all entered details and uploaded documents before submitting. Files must be JPG, PNG, or WebP (5 MB maximum).</p>
+                    <button class="button button-wide" type="submit">Submit for review <span aria-hidden="true">→</span></button>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

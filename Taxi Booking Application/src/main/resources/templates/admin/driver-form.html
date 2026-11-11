@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${editing} ? 'Edit driver | Serendib Ride' : 'Add driver | Serendib Ride'">Driver | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="narrow-shell">
+    <a class="back-link" th:href="@{/admin/drivers}">← Driver management</a>
+    <section class="form-card">
+        <p class="eyebrow">OPERATIONS / DRIVERS</p>
+        <h1 th:text="${editing} ? 'Edit driver details' : 'Add a driver'">Add a driver</h1>
+        <p class="muted" th:unless="${editing}">New drivers start pending and must be verified before going online.</p>
+        <form th:action="${editing} ? @{/admin/drivers/{id}(id=${driverId})} : @{/admin/drivers}"
+              th:object="${driverApplication}" method="post" class="stack-form">
+            <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+            <label for="name">Full name</label><input id="name" th:field="*{name}" maxlength="120" required>
+            <p class="field-error" th:errors="*{name}"></p>
+            <label for="phone">Phone number</label><input id="phone" th:field="*{phone}" type="tel" maxlength="32" required>
+            <p class="field-error" th:errors="*{phone}"></p>
+            <label for="email">Email address</label><input id="email" th:field="*{email}" type="email" maxlength="254" required>
+            <p class="field-error" th:errors="*{email}"></p>
+            <label for="licenseNumber">Driving license number</label><input id="licenseNumber" th:field="*{licenseNumber}" maxlength="64" required>
+            <p class="field-error" th:errors="*{licenseNumber}"></p>
+            <div class="form-actions">
+                <button class="button" type="submit" th:text="${editing} ? 'Save changes' : 'Add pending driver'"></button>
+                <a class="button button-secondary" th:href="@{/admin/drivers}">Cancel</a>
+            </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payments | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading"><div><p class="eyebrow">OPERATIONS / FINANCE</p><h1>Payments</h1><p>Inspect payment status and transaction references. Card data is never displayed.</p></div>
+        <a class="button button-secondary" th:href="@{/admin}">Admin overview</a></div>
+    <section class="empty-state" th:if="${#lists.isEmpty(payments)}"><h2>No payments yet</h2><p>Customer payment attempts will appear here.</p></section>
+    <div class="admin-record-list" th:unless="${#lists.isEmpty(payments)}">
+        <article class="admin-record" th:each="payment : ${payments}">
+            <div class="record-avatar" aria-hidden="true">₨</div>
+            <div class="record-main">
+                <div class="record-title"><h2 th:text="${payment.paymentReference}"></h2>
+                    <span class="status-pill" th:classappend="${'status-' + #strings.toLowerCase(payment.status.name())}"
+                          th:text="${#strings.replace(payment.status.name(), '_', ' ')}"></span></div>
+                <p th:text="${payment.passenger.fullName + ' · ' + payment.passenger.email}"></p>
+                <p th:text="${payment.booking.bookingReference + ' · ' + payment.method}"></p>
+                <p class="record-meta" th:text="${payment.amount + ' ' + payment.currency + ' · ' + #temporals.format(payment.createdAt, 'd MMM yyyy HH:mm')}"></p>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Customer accounts | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">OPERATIONS / CUSTOMERS</p><h1>Customer accounts</h1><p>Review customer contact details. Administrator accounts are separate.</p></div>
+        <a class="button button-secondary" th:href="@{/admin}">Admin overview</a>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section class="empty-state" th:if="${#lists.isEmpty(passengers)}"><h2>No accounts yet</h2><p>Registered accounts will appear here.</p></section>
+    <div class="admin-record-list" th:unless="${#lists.isEmpty(passengers)}">
+        <article class="admin-record" th:each="passenger : ${passengers}">
+            <div class="record-avatar" th:text="${#strings.substring(passenger.fullName, 0, 1)}">U</div>
+            <div class="record-main">
+                <div class="record-title"><h2 th:text="${passenger.fullName}"></h2>
+                    <span class="status-pill">Passenger</span></div>
+                <p th:text="${passenger.email + ' · ' + passenger.phone}"></p>
+                <p class="record-meta" th:text="${passenger.address}"></p>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

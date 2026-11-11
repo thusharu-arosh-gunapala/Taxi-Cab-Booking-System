@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payment details | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <a class="back-link" th:href="@{/payments}">← Payments</a>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section class="form-card wide-card">
+        <div class="page-heading">
+            <div><p class="eyebrow">PAYMENT DETAILS</p><h1 th:text="${payment.paymentReference}"></h1></div>
+            <span class="status-pill" th:classappend="${'status-' + #strings.replace(#strings.toLowerCase(payment.status.name()), '_', '-')}"
+                  th:text="${#strings.replace(payment.status.name(), '_', ' ')}"></span>
+        </div>
+        <div class="detail-grid">
+            <div><span class="eyebrow">BOOKING</span><p th:text="${payment.booking.bookingReference}"></p></div>
+            <div><span class="eyebrow">METHOD</span><p th:text="${payment.method.name() == 'CASH' ? 'Cash to driver' : 'Stripe hosted checkout'}"></p></div>
+            <div><span class="eyebrow">FARE BEFORE DISCOUNT</span><p th:text="${payment.currency + ' ' + #numbers.formatDecimal(payment.originalAmount, 1, 2)}"></p></div>
+            <div><span class="eyebrow">DISCOUNT</span><p th:text="${payment.currency + ' ' + #numbers.formatDecimal(payment.discountAmount, 1, 2)}"></p></div>
+            <div><span class="eyebrow">TOTAL</span><p th:text="${payment.currency + ' ' + #numbers.formatDecimal(payment.amount, 1, 2)}"></p></div>
+            <div><span class="eyebrow">CREATED</span><p th:text="${#temporals.format(payment.createdAt, 'd MMM yyyy, HH:mm')}"></p></div>
+        </div>
+        <p class="alert alert-error" th:if="${payment.status.name() == 'PENDING' and payment.method.name() == 'CASH'}">
+            This payment is pending driver confirmation. It has not been marked paid.
+        </p>
+        <p class="alert alert-error" th:if="${payment.status.name() == 'PENDING' and payment.method.name() == 'STRIPE_CHECKOUT'}">
+            Payment remains pending until Stripe verification completes.
+        </p>
+        <p th:if="${payment.status.name() == 'PENDING' and payment.method.name() == 'STRIPE_CHECKOUT' and payment.providerSessionId != null}">
+            <a class="button" th:href="@{/payments/{reference}/continue(reference=${payment.paymentReference})}">Continue Stripe Checkout</a>
+        </p>
+        <p th:if="${payment.receipt != null}">
+            <a class="button button-secondary" th:href="@{/receipts/{reference}(reference=${payment.receipt.receiptReference})}">View receipt</a>
+        </p>
+        <form th:if="${payment.status.name() == 'SUCCEEDED'}"
+              th:action="@{/payments/{reference}/refund(reference=${payment.paymentReference})}"
+              th:object="${refundForm}" method="post" class="stack-form cancel-form">
+            <h2>Request a refund</h2>
+            <p class="muted">Requests are reviewed separately; submitting this form does not issue a refund.</p>
+            <label for="refund-reason">Reason</label>
+            <textarea id="refund-reason" th:field="*{reason}" maxlength="500" required></textarea>
+            <p class="field-error" th:errors="*{reason}"></p>
+            <button class="text-danger" type="submit">Submit refund request</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

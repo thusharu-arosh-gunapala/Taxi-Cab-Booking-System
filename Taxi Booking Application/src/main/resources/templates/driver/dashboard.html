@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Driver dashboard | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">DRIVER PORTAL</p>
+            <h1 th:text="${'Welcome, ' + driverProfile.name}">Welcome, Driver</h1>
+            <p>Driver ID <strong th:text="${driverProfile.driverReference}"></strong></p>
+        </div>
+        <div class="form-actions">
+            <a class="button button-secondary" th:href="@{/driver/jobs}">Available jobs</a>
+            <a class="button button-secondary" th:href="@{/driver/trips}">My trips</a>
+            <a class="button button-secondary" th:href="@{/driver/profile}">My profile</a>
+        </div>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section class="form-card">
+        <p class="eyebrow">ACCOUNT STATUS</p>
+        <h2 th:text="${driverProfile.suspended ? 'Account suspended' : (driverProfile.approved ? 'Approved and active' : 'Application under review')}">Status</h2>
+        <p class="muted" th:text="${driverProfile.online ? 'You are online and visible as available.' : 'You are offline and will not be offered rides.'}"></p>
+        <form th:if="${driverProfile.approved and driverProfile.accountActive and !driverProfile.suspended}" th:action="@{/driver/availability}" method="post">
+            <button class="button" type="submit" th:text="${driverProfile.online ? 'Go offline' : 'Go online'}"></button>
+        </form>
+    </section>
+    <section class="admin-metrics">
+        <article class="metric-card"><span>Pending job offers</span><strong th:text="${#lists.size(rideOffers)}">0</strong><small>Ride requests awaiting your response</small></article>
+        <article class="metric-card"><span>Current trips</span><strong th:text="${#lists.size(currentTrips)}">0</strong><small>Accepted rides in progress</small></article>
+        <article class="metric-card"><span>Completed rides</span><strong th:text="${#lists.size(completedTrips)}">0</strong><small>Completed trip history</small></article>
+    </section>
+    <section class="panel" th:if="${!#lists.isEmpty(rideOffers)}">
+        <div class="page-heading"><h2>New ride offers</h2><a th:href="@{/driver/jobs}">View all jobs</a></div>
+        <article class="admin-record" th:each="job : ${rideOffers}">
+            <div class="record-main">
+                <h3 th:text="${job.passenger.fullName}">Passenger</h3>
+                <p th:text="${job.pickupAddress + ' → ' + job.destinationAddress}">Route</p>
+                <p class="record-meta" th:text="${job.estimatedDistanceKm + ' km · ' + job.estimatedFare + ' ' + job.fareCurrency + ' · ' + job.vehicleCategory}">Ride</p>
+            </div>
+            <a class="button button-small" th:href="@{/driver/jobs}">Review offer</a>
+        </article>
+    </section>
+    <section class="form-card">
+        <p class="eyebrow">MY PROFILE</p>
+        <dl>
+            <dt>Name</dt><dd th:text="${driverProfile.name}"></dd>
+            <dt>Email</dt><dd th:text="${driverProfile.email}"></dd>
+            <dt>Phone</dt><dd th:text="${driverProfile.phone}"></dd>
+            <dt>Licence number</dt><dd th:text="${driverProfile.licenseNumber}"></dd>
+        </dl>
+    </section>
+    <section class="form-card">
+        <p class="eyebrow">MY VEHICLES</p>
+        <div th:if="${#lists.isEmpty(vehicles)}" class="empty-state"><p>No vehicle is linked to your driver account. Contact the administrator.</p></div>
+        <div th:each="vehicle : ${vehicles}" class="admin-record">
+            <div class="record-main">
+                <h2 th:text="${vehicle.model}"></h2>
+                <p th:text="${vehicle.category + ' · ' + vehicle.plateNumber + ' · ' + vehicle.color}"></p>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

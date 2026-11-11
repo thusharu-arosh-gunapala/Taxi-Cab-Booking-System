@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101828">
+    <title>Create first administrator | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-login">
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="auth-shell">
+    <aside class="auth-promo">
+        <a class="brand auth-promo-brand" th:href="@{/}" aria-label="Serendib Ride home">
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span class="brand-name">Serendib <span>Ride</span></span>
+        </a>
+        <div>
+            <p class="eyebrow">FIRST-TIME SETUP</p>
+            <h2>Create your administrator account.</h2>
+            <p>This one-time local setup is available only until the first administrator is created.</p>
+        </div>
+        <p class="disclaimer">Choose a unique email and a strong password. No default credentials are used.</p>
+    </aside>
+    <section class="auth-content">
+        <div class="form-card">
+            <span class="auth-secure-label"><span aria-hidden="true">●</span> LOCAL ADMIN SETUP</span>
+            <h1>Create admin account</h1>
+            <p class="muted auth-intro">Set the credentials you will use to sign in and manage the application.</p>
+            <p th:if="${#fields.hasGlobalErrors()}" class="alert alert-error" role="alert"
+               th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+            <form th:action="@{/admin/setup}" th:object="${firstAdministratorForm}" method="post" class="stack-form">
+                <label for="name">Administrator name</label>
+                <input id="name" th:field="*{name}" autocomplete="name" maxlength="120" required>
+                <p class="field-error" th:errors="*{name}"></p>
+                <label for="email">Administrator email</label>
+                <input id="email" th:field="*{email}" type="email" autocomplete="email" maxlength="254" required>
+                <p class="field-error" th:errors="*{email}"></p>
+                <label for="password">Create password</label>
+                <input id="password" th:field="*{password}" type="password" autocomplete="new-password"
+                       minlength="8" maxlength="72" required>
+                <p class="field-error" th:errors="*{password}"></p>
+                <label for="confirmPassword">Confirm password</label>
+                <input id="confirmPassword" th:field="*{confirmPassword}" type="password"
+                       autocomplete="new-password" required>
+                <p class="field-error" th:errors="*{confirmPassword}"></p>
+                <button class="button button-wide auth-submit" type="submit">Create administrator</button>
+            </form>
+            <p class="muted"><a th:href="@{/login}">Return to sign in</a></p>
+        </div>
+    </section>
+</main>
+</body>
+</html>

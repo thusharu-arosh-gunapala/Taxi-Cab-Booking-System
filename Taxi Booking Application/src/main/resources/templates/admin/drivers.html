@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Driver management | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">OPERATIONS / DRIVERS</p><h1>Driver management</h1><p>Review applications and keep driver verification and availability up to date.</p></div>
+        <div class="form-actions"><a class="button button-secondary" th:href="@{/admin}">Overview</a><a class="button" th:href="@{/admin/drivers/new}">Add driver</a></div>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <form class="filter-bar" th:action="@{/admin/drivers}" method="get">
+        <label for="status">Application status</label>
+        <select id="status" name="status">
+            <option value="">All applications</option>
+            <option th:each="statusOption : ${statuses}" th:value="${statusOption}"
+                    th:text="${statusOption}" th:selected="${selectedStatus == statusOption.name()}"></option>
+        </select>
+        <label for="search">Search applications</label>
+        <input id="search" name="search" type="search" maxlength="120" placeholder="Name, email, NIC, or licence"
+               th:value="${search}">
+        <button class="button button-secondary" type="submit">Search</button>
+    </form>
+    <section th:if="${#lists.isEmpty(drivers)}" class="empty-state">
+        <h2>No driver applications yet</h2><p>New applications will appear here for verification.</p>
+        <a class="button" th:href="@{/admin/drivers/new}">Add a driver</a>
+    </section>
+    <div class="admin-record-list" th:unless="${#lists.isEmpty(drivers)}">
+        <article class="admin-record" th:each="driver : ${drivers}">
+            <div class="record-avatar" th:text="${#strings.substring(driver.name, 0, 1)}">D</div>
+            <div class="record-main">
+                <div class="record-title">
+                    <h2 th:text="${driver.name}"></h2>
+                    <span class="status-pill"
+                          th:classappend="${driver.applicationStatus.name() == 'APPROVED' ? 'status-approved' : (driver.applicationStatus.name() == 'PENDING' ? 'status-online' : 'status-pending')}"
+                          th:text="${driver.applicationStatus}"></span>
+                </div>
+                <p th:text="${driver.email + ' · ' + driver.phone}"></p>
+                <p class="record-meta" th:text="${'NIC ' + driver.nicNumber + ' · Licence ' + driver.licenseNumber + ' · Applied ' + #temporals.format(driver.createdAt, 'd MMM yyyy')}"></p>
+            </div>
+            <div class="record-actions">
+                <a class="button button-small button-secondary" th:href="@{/admin/drivers/{id}(id=${driver.id})}">Review application</a>
+                <form th:if="${driver.applicationStatus.name() == 'PENDING'}" th:action="@{/admin/drivers/{id}/approve(id=${driver.id})}" method="post">
+                    <button class="button button-small" type="submit">Approve</button>
+                </form>
+                <form th:if="${driver.applicationStatus.name() == 'APPROVED'}" th:action="@{/admin/drivers/{id}/online(id=${driver.id})}" method="post">
+                    <button class="button button-small button-secondary" type="submit"
+                            th:text="${driver.online ? 'Set offline' : 'Set online'}"></button>
+                </form>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My rides | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">YOUR SERENDIB RIDES</p>
+            <h1>My rides</h1>
+            <p>Every booking and its latest status, all in one place.</p>
+        </div>
+        <a class="button" th:href="@{/bookings/new}">Plan a ride <span aria-hidden="true">→</span></a>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section th:if="${#lists.isEmpty(bookings)}" class="empty-state">
+        <span class="ride-card-icon" aria-hidden="true">↗</span>
+        <h2>Your next ride starts here</h2>
+        <p>Plan a pickup, choose your destination, and review your fare estimate before confirming.</p>
+        <a class="button" th:href="@{/bookings/new}">Book your first ride</a>
+    </section>
+    <div class="booking-list" th:unless="${#lists.isEmpty(bookings)}">
+        <article class="booking-card" th:each="booking : ${bookings}">
+            <div class="booking-topline">
+                <a class="ride-reference" th:href="@{/bookings/{id}(id=${booking.id})}" th:text="${booking.bookingReference}"></a>
+                <span class="status-pill" th:classappend="${'status-' + #strings.replace(#strings.toLowerCase(booking.status.name()), '_', '-')}"
+                      th:text="${#strings.replace(booking.status.name(), '_', ' ')}"></span>
+            </div>
+            <p class="ride-date" th:text="${#temporals.format(booking.createdAt, 'd MMM yyyy · HH:mm')}"></p>
+            <div class="route-line"><span class="route-dot"></span><div><small>PICKUP</small><p th:text="${booking.pickupAddress}"></p></div></div>
+            <div class="route-line"><span class="route-dot route-dot-end"></span><div><small>DESTINATION</small><p th:text="${booking.destinationAddress}"></p></div></div>
+            <div class="booking-details">
+                <span th:text="${#strings.replace(booking.vehicleCategory.name(), '_', ' ')}"></span>
+                <span th:text="${booking.estimatedDistanceKm} + ' km est.'"></span>
+                <span th:text="${booking.estimatedDurationMinutes} + ' min'"></span>
+                <strong th:text="${booking.fareCurrency + ' ' + #numbers.formatDecimal(booking.estimatedFare, 1, 2)}"></strong>
+            </div>
+            <div class="ride-card-actions">
+                <a th:href="@{/bookings/{id}(id=${booking.id})}">View ride details <span aria-hidden="true">→</span></a>
+                <a th:if="${booking.status.name() == 'COMPLETED'}"
+                   th:href="@{/bookings/{id}/payment(id=${booking.id})}">Payment status</a>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

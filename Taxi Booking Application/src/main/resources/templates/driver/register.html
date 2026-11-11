@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Join as a driver | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="auth-shell">
+    <aside class="auth-promo">
+        <a class="brand auth-promo-brand" th:href="@{/}">
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span class="brand-name">Serendib <span>Ride</span></span>
+        </a>
+        <div>
+            <p class="eyebrow">JOIN OUR DRIVER COMMUNITY</p>
+            <h2>Your next journey starts here.</h2>
+            <p>Create your own secure driver account. Once registered, complete your application and wait for our team to verify your documents.</p>
+            <div class="auth-benefits">
+                <div class="auth-benefit"><span class="proof-check" aria-hidden="true">✓</span> You choose and keep your password</div>
+                <div class="auth-benefit"><span class="proof-check" aria-hidden="true">✓</span> Applications are reviewed before activation</div>
+            </div>
+        </div>
+        <p class="disclaimer">Your account is separate from passenger accounts.</p>
+    </aside>
+    <section class="auth-content">
+        <div class="form-card">
+            <p class="eyebrow">DRIVER ACCOUNT</p>
+            <h1>Create your account</h1>
+            <p class="muted">Register first, then submit your driver and vehicle application.</p>
+            <form th:action="@{/driver/register}" th:object="${registration}" method="post" class="stack-form">
+                <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+                <label for="fullName">Full name</label>
+                <input id="fullName" th:field="*{fullName}" autocomplete="name" maxlength="120" required>
+                <p class="field-error" th:errors="*{fullName}"></p>
+                <label for="email">Email address</label>
+                <input id="email" th:field="*{email}" type="email" autocomplete="email" maxlength="254" required>
+                <p class="field-error" th:errors="*{email}"></p>
+                <label for="phone">Phone number</label>
+                <input id="phone" th:field="*{phone}" type="tel" autocomplete="tel" maxlength="32" required>
+                <p class="field-error" th:errors="*{phone}"></p>
+                <label for="password">Password</label>
+                <input id="password" th:field="*{password}" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
+                <p class="field-error" th:errors="*{password}"></p>
+                <label for="confirmPassword">Confirm password</label>
+                <input id="confirmPassword" th:field="*{confirmPassword}" type="password" autocomplete="new-password" required>
+                <p class="field-error" th:errors="*{confirmPassword}"></p>
+                <button class="button button-wide" type="submit">Create driver account <span aria-hidden="true">→</span></button>
+            </form>
+            <p class="muted">Already registered? <a th:href="@{/driver/login}">Sign in</a></p>
+        </div>
+    </section>
+</main>
+</body>
+</html>

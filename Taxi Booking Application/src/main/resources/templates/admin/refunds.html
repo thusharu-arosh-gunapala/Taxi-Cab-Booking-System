@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Refund requests | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading"><div><p class="eyebrow">OPERATIONS / FINANCE</p><h1>Refund requests</h1><p>Review requests and handle them through the payment provider. This panel does not issue refunds.</p></div>
+        <a class="button button-secondary" th:href="@{/admin}">Admin overview</a></div>
+    <div class="alert alert-info" role="note">Refund requests are not approved or paid automatically. Verify the payment and refund through your configured provider before updating records.</div>
+    <section class="empty-state" th:if="${#lists.isEmpty(refunds)}"><h2>No refund requests</h2><p>Customer requests will appear here.</p></section>
+    <div class="admin-record-list" th:unless="${#lists.isEmpty(refunds)}">
+        <article class="admin-record" th:each="refund : ${refunds}">
+            <div class="record-avatar" aria-hidden="true">↩</div>
+            <div class="record-main">
+                <div class="record-title"><h2 th:text="${refund.refundReference}"></h2>
+                    <span class="status-pill" th:text="${#strings.replace(refund.status.name(), '_', ' ')}"></span></div>
+                <p th:text="${refund.passenger.fullName + ' · ' + refund.passenger.email}"></p>
+                <p th:text="${refund.payment.paymentReference + ' · ' + refund.amount + ' ' + refund.payment.currency}"></p>
+                <p class="record-meta" th:text="${refund.reason + ' · ' + #temporals.format(refund.requestedAt, 'd MMM yyyy HH:mm')}"></p>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

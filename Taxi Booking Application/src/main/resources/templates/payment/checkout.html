@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payment | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="narrow-shell">
+    <section class="form-card">
+        <p class="eyebrow">SECURE PAYMENT</p>
+        <h1>Pay for your ride</h1>
+        <p class="muted" th:text="${'Booking ' + booking.bookingReference}"></p>
+        <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+        <div th:if="${booking.status.name() != 'COMPLETED'}" class="alert alert-error" role="status">
+            Payment is available after the trip is completed.
+        </div>
+        <div class="payment-total">
+            <span>Booking fare</span>
+            <strong th:text="${booking.fareCurrency + ' ' + #numbers.formatDecimal(booking.estimatedFare, 1, 2)}"></strong>
+        </div>
+        <section th:if="${existingPayment != null and existingPayment.status.name() != 'FAILED'}" class="estimate-box">
+            <p th:text="${'Payment status: ' + #strings.replace(existingPayment.status.name(), '_', ' ')}"></p>
+            <a th:href="@{/payments/{reference}(reference=${existingPayment.paymentReference})}">View payment details</a>
+        </section>
+        <form th:if="${booking.status.name() == 'COMPLETED' and (existingPayment == null or existingPayment.status.name() == 'FAILED')}"
+              th:action="@{/bookings/{id}/payment(id=${booking.id})}"
+              th:object="${paymentForm}" method="post" class="stack-form">
+            <label for="promotionCode">Promotion code (optional)</label>
+            <input id="promotionCode" th:field="*{promotionCode}" autocomplete="off" maxlength="32">
+            <p class="field-error" th:errors="*{promotionCode}"></p>
+            <fieldset class="payment-options">
+                <legend>Payment method</legend>
+                <label class="payment-option">
+                    <input type="radio" th:field="*{method}" value="CASH" required>
+                    <span><strong>Cash to driver</strong><small>Payment stays pending until the driver confirms collection.</small></span>
+                </label>
+                <label class="payment-option" th:if="${stripeConfigured}">
+                    <input type="radio" th:field="*{method}" value="STRIPE_CHECKOUT">
+                    <span><strong>Card or supported wallet</strong><small>Continue to Stripe's hosted checkout. Card details are not stored here.</small></span>
+                </label>
+                <p class="muted" th:unless="${stripeConfigured}">
+                    Online card payment is unavailable until Stripe credentials and webhook verification are configured.
+                </p>
+            </fieldset>
+            <p class="field-error" th:errors="*{method}"></p>
+            <button class="button button-wide" type="submit">Continue to payment</button>
+        </form>
+        <p class="disclaimer">Fare and passenger identity are taken from the saved booking, not from submitted payment data.</p>
+    </section>
+</main>
+</body>
+</html>

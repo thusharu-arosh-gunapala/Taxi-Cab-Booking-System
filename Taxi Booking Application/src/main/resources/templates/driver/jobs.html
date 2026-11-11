@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Available jobs | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">DRIVER PORTAL</p><h1>Available jobs</h1><p>Review and respond to ride offers assigned to you.</p></div>
+        <a class="button button-secondary" th:href="@{/driver/dashboard}">Dashboard</a>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section th:if="${#lists.isEmpty(jobs)}" class="empty-state">
+        <h2>No ride offers right now</h2><p>Stay online to be considered for suitable requests.</p>
+    </section>
+    <section class="admin-record-list" th:unless="${#lists.isEmpty(jobs)}">
+        <article class="admin-record" th:each="job : ${jobs}">
+            <div class="record-main">
+                <span class="status-pill status-online" th:text="${job.status}">DRIVER_ASSIGNED</span>
+                <h2 th:text="${job.passenger.fullName}">Passenger</h2>
+                <p><strong>Pickup:</strong> <span th:text="${job.pickupAddress}"></span></p>
+                <p><strong>Destination:</strong> <span th:text="${job.destinationAddress}"></span></p>
+                <p class="record-meta" th:text="${job.estimatedDistanceKm + ' km · ' + job.estimatedFare + ' ' + job.fareCurrency + ' · ' + job.vehicleCategory}"></p>
+                <p class="record-meta" th:text="${'Passenger contact: ' + job.passenger.phone}"></p>
+                <p class="record-meta" th:text="${'Scheduled: ' + #temporals.format(job.bookingTime, 'd MMM yyyy HH:mm')}"></p>
+            </div>
+            <div class="record-actions">
+                <form th:action="@{/driver/jobs/{id}/response(id=${job.id})}" method="post">
+                    <input type="hidden" name="accepted" value="true">
+                    <button class="button button-small" type="submit">Accept ride</button>
+                </form>
+                <form th:action="@{/driver/jobs/{id}/response(id=${job.id})}" method="post">
+                    <input type="hidden" name="accepted" value="false">
+                    <button class="button button-small button-secondary" type="submit">Decline</button>
+                </form>
+            </div>
+        </article>
+    </section>
+</main>
+</body>
+</html>

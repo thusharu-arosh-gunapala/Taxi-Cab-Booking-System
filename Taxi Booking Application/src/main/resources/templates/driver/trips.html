@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My trips | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">DRIVER PORTAL</p><h1>My trips</h1><p>Your accepted rides and trip history.</p></div>
+        <a class="button button-secondary" th:href="@{/driver/dashboard}">Dashboard</a>
+    </div>
+    <section class="panel">
+        <h2>Current trips</h2>
+        <p th:if="${#lists.isEmpty(currentTrips)}" class="muted">No current trips.</p>
+        <article class="admin-record" th:each="trip : ${currentTrips}">
+            <div class="record-main">
+                <span class="status-pill status-online" th:text="${trip.status}"></span>
+                <h3 th:text="${trip.passenger.fullName}"></h3>
+                <p th:text="${trip.pickupAddress + ' → ' + trip.destinationAddress}"></p>
+                <p class="record-meta" th:text="${trip.passenger.phone + ' · ' + trip.estimatedFare + ' ' + trip.fareCurrency}"></p>
+            </div>
+        </article>
+    </section>
+    <section class="panel">
+        <h2>Completed trips</h2>
+        <p th:if="${#lists.isEmpty(completedTrips)}" class="muted">Completed rides will appear here.</p>
+        <article class="admin-record" th:each="trip : ${completedTrips}">
+            <div class="record-main">
+                <span class="status-pill status-approved">COMPLETED</span>
+                <h3 th:text="${trip.passenger.fullName}"></h3>
+                <p th:text="${trip.pickupAddress + ' → ' + trip.destinationAddress}"></p>
+                <p class="record-meta" th:text="${trip.estimatedDistanceKm + ' km · ' + trip.estimatedFare + ' ' + trip.fareCurrency}"></p>
+            </div>
+        </article>
+    </section>
+    <section class="panel">
+        <h2>Cancelled trips</h2>
+        <p th:if="${#lists.isEmpty(cancelledTrips)}" class="muted">No cancelled trips.</p>
+        <article class="admin-record" th:each="trip : ${cancelledTrips}">
+            <div class="record-main">
+                <span class="status-pill status-pending">CANCELLED</span>
+                <h3 th:text="${trip.passenger.fullName}"></h3>
+                <p th:text="${trip.pickupAddress + ' → ' + trip.destinationAddress}"></p>
+            </div>
+        </article>
+    </section>
+</main>
+</body>
+</html>

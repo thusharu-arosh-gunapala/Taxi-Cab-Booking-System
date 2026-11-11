@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Saved places | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading"><div><p class="eyebrow">PASSENGER PROFILE</p><h1>Saved places</h1><p class="muted">Keep your home, work, and other frequent locations.</p></div></div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <div class="split-layout">
+        <section class="form-card">
+            <h2>Add a place</h2>
+            <form th:action="@{/passenger/favourites}" th:object="${locationForm}" method="post" class="stack-form">
+                <label for="type">Place type</label>
+                <select id="type" th:field="*{type}" required>
+                    <option value="">Choose a type</option>
+                    <option th:each="type : ${locationTypes}" th:value="${type}" th:text="${type}"></option>
+                </select>
+                <p class="field-error" th:errors="*{type}"></p>
+                <label for="address">Address</label>
+                <input id="address" th:field="*{address}" maxlength="255" required>
+                <p class="field-error" th:errors="*{address}"></p>
+                <div class="form-grid">
+                    <div><label for="latitude">Latitude</label><input id="latitude" th:field="*{latitude}" type="number" step="any" min="-90" max="90" required><p class="field-error" th:errors="*{latitude}"></p></div>
+                    <div><label for="longitude">Longitude</label><input id="longitude" th:field="*{longitude}" type="number" step="any" min="-180" max="180" required><p class="field-error" th:errors="*{longitude}"></p></div>
+                </div>
+                <button class="button" type="submit">Save place</button>
+            </form>
+        </section>
+        <section>
+            <h2>Your places</h2>
+            <p th:if="${#lists.isEmpty(locations)}" class="empty-note">No saved places yet.</p>
+            <article class="saved-place" th:each="location : ${locations}">
+                <div><span class="eyebrow" th:text="${location.type}"></span><h3 th:text="${location.address}"></h3><p class="muted" th:text="${location.latitude + ', ' + location.longitude}"></p></div>
+                <form th:action="@{/passenger/favourites/{id}/delete(id=${location.id})}" method="post">
+                    <button class="text-danger" type="submit">Delete</button>
+                </form>
+            </article>
+        </section>
+    </div>
+</main>
+</body>
+</html>

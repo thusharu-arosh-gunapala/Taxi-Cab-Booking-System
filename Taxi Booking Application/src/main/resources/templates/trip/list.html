@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trip history | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading"><div><p class="eyebrow">YOUR JOURNEYS</p><h1>Trip history</h1><p>Completed and active trips associated with your bookings.</p></div></div>
+    <section th:if="${#lists.isEmpty(trips)}" class="empty-state"><span class="ride-card-icon" aria-hidden="true">↗</span><h2>Your journeys will appear here</h2><p>Trip records are created when a driver starts an accepted booking.</p><a class="button button-secondary" th:href="@{/bookings}">View your rides</a></section>
+    <div class="booking-list" th:unless="${#lists.isEmpty(trips)}">
+        <article class="booking-card" th:each="trip : ${trips}">
+            <div class="booking-topline"><strong th:text="${trip.booking.bookingReference}"></strong><span class="status-pill" th:classappend="${trip.completedAt == null ? 'status-in-progress' : 'status-completed'}" th:text="${trip.completedAt == null ? 'In progress' : 'Completed'}"></span></div>
+            <p class="ride-date" th:text="${#temporals.format(trip.startedAt, 'd MMM yyyy · HH:mm')}"></p>
+            <p th:text="${trip.booking.pickupAddress + ' → ' + trip.booking.destinationAddress}"></p>
+        </article>
+    </div>
+</main>
+</body>
+</html>

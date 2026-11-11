@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Receipt | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="narrow-shell">
+    <section class="form-card">
+        <p class="eyebrow">PAYMENT RECEIPT</p>
+        <h1 th:text="${receipt.receiptReference}"></h1>
+        <p class="muted" th:text="${#temporals.format(receipt.issuedAt, 'd MMM yyyy, HH:mm')}"></p>
+        <div class="detail-grid">
+            <div><span class="eyebrow">BOOKING</span><p th:text="${receipt.payment.booking.bookingReference}"></p></div>
+            <div><span class="eyebrow">PAYMENT REFERENCE</span><p th:text="${receipt.payment.paymentReference}"></p></div>
+            <div><span class="eyebrow">PICKUP</span><p th:text="${receipt.pickupAddress}"></p></div>
+            <div><span class="eyebrow">DESTINATION</span><p th:text="${receipt.destinationAddress}"></p></div>
+            <div><span class="eyebrow">DISTANCE</span><p th:text="${receipt.distanceKm + ' km'}"></p></div>
+            <div><span class="eyebrow">AMOUNT PAID</span><p th:text="${receipt.payment.currency + ' ' + #numbers.formatDecimal(receipt.payment.amount, 1, 2)}"></p></div>
+        </div>
+        <p class="disclaimer">This receipt is issued only after payment confirmation.</p>
+        <a class="button button-secondary" th:href="@{/payments/{reference}(reference=${receipt.payment.paymentReference})}">Payment details</a>
+    </section>
+</main>
+</body>
+</html>

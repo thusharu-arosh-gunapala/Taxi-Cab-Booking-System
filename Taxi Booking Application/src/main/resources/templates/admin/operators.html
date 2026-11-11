@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administrator operators | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">OPERATIONS / ACCESS</p><h1>Administrator operators</h1>
+            <p>Operator accounts are stored separately from passenger accounts.</p></div>
+        <a class="button button-secondary" th:href="@{/admin}">Admin overview</a>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section class="admin-operator-layout">
+        <div class="form-card">
+            <h2>Add an operator</h2>
+            <p class="muted">Only add trusted people who need full website administration access.</p>
+            <form th:action="@{/admin/operators}" th:object="${administratorForm}" method="post" class="stack-form">
+                <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+                <label for="fullName">Operator name</label>
+                <input id="fullName" th:field="*{fullName}" autocomplete="name" maxlength="120" required>
+                <p class="field-error" th:errors="*{fullName}"></p>
+                <label for="email">Operator email</label>
+                <input id="email" th:field="*{email}" type="email" autocomplete="username" maxlength="254" required>
+                <p class="field-error" th:errors="*{email}"></p>
+                <label for="password">Temporary password</label>
+                <input id="password" th:field="*{password}" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
+                <p class="field-error" th:errors="*{password}"></p>
+                <button class="button" type="submit">Create operator account</button>
+            </form>
+        </div>
+        <div>
+            <h2 class="section-title">Current operators</h2>
+            <div class="admin-record-list" th:unless="${#lists.isEmpty(operators)}">
+                <article class="admin-record" th:each="operator : ${operators}">
+                    <div class="record-avatar" th:text="${#strings.substring(operator.fullName, 0, 1)}">A</div>
+                    <div class="record-main">
+                        <div class="record-title"><h3 th:text="${operator.fullName}"></h3><span class="status-pill status-approved">Administrator</span></div>
+                        <p th:text="${operator.email}"></p>
+                        <p class="record-meta" th:text="${'Added ' + #temporals.format(operator.createdAt, 'd MMM yyyy')}"></p>
+                    </div>
+                    <div class="record-actions">
+                        <form th:action="@{/admin/operators/{id}/remove(id=${operator.id})}" method="post"
+                              onsubmit="return confirm('Remove this operator\\'s admin access?');">
+                            <button class="text-danger" type="submit">Remove access</button>
+                        </form>
+                    </div>
+                </article>
+            </div>
+            <div class="empty-state" th:if="${#lists.isEmpty(operators)}"><h2>No operators</h2><p>No administrator accounts are set up.</p></div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

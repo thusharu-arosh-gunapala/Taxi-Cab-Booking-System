@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101828">
+    <meta name="description" content="Book your next ride with Serendib Ride. Compare route details and review your fare estimate before confirming.">
+    <title>Serendib Ride | A better way to get there</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="page-shell">
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">YOUR CITY. YOUR RIDE.</p>
+            <h1>Go where life<br>takes <span>you.</span></h1>
+            <p class="lead">A simpler way to get around. Plan your route, see an upfront fare estimate, and keep every ride in one place.</p>
+            <div class="hero-actions">
+                <a class="button" th:href="${signedIn} ? @{/bookings/new} : @{/register}">
+                    Book a ride <span aria-hidden="true">→</span>
+                </a>
+                <a class="button button-secondary" th:href="${signedIn} ? @{/bookings} : @{/login}">Explore your rides</a>
+            </div>
+            <div class="hero-proof" aria-label="Service features">
+                <span><span class="proof-check" aria-hidden="true">✓</span> Fare estimate before booking</span>
+                <span><span class="proof-check" aria-hidden="true">✓</span> Your ride details in one place</span>
+            </div>
+        </div>
+        <div class="hero-visual" aria-label="Illustration of a ride route">
+            <div class="hero-map-art" aria-hidden="true">
+                <span class="map-water"></span>
+                <span class="map-road map-road-one"></span>
+                <span class="map-road map-road-two"></span>
+                <span class="map-road map-road-three"></span>
+                <span class="map-route"></span>
+                <span class="map-pin map-pin-start"></span>
+                <span class="map-pin map-pin-end"></span>
+                <span class="map-car" aria-hidden="true">S</span>
+            </div>
+            <div class="hero-ride-card">
+                <span class="ride-card-icon" aria-hidden="true">↗</span>
+                <div>
+                    <p class="hero-ride-title">Your next trip, made simple</p>
+                    <p class="hero-ride-subtitle">Set your pickup and destination to get started</p>
+                </div>
+                <a th:href="${signedIn} ? @{/bookings/new} : @{/register}" aria-label="Start booking">→</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="features-title">
+        <div class="section-heading">
+            <p class="eyebrow">MADE FOR THE WAY YOU MOVE</p>
+            <h2 id="features-title">Everything for a smoother ride</h2>
+            <p>Thoughtful trip planning, clear details, and your ride history—together in one place.</p>
+        </div>
+        <div class="feature-grid">
+            <article class="feature-card">
+                <span aria-hidden="true">01</span>
+                <h2>Know before you go</h2>
+                <p>Review your route, travel time, vehicle choice, and estimated fare before you confirm.</p>
+            </article>
+            <article class="feature-card">
+                <span aria-hidden="true">02</span>
+                <h2>Your places, ready</h2>
+                <p>Save frequently used locations to make planning your next trip feel effortless.</p>
+            </article>
+            <article class="feature-card">
+                <span aria-hidden="true">03</span>
+                <h2>Every ride, together</h2>
+                <p>Find your bookings, trip progress, payment status, and receipts from your account.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="cta-band" aria-label="Get started">
+        <div>
+            <h2>Your next destination is closer than you think.</h2>
+            <p>Create an account and plan your first ride with Serendib Ride.</p>
+        </div>
+        <a class="button" th:href="${signedIn} ? @{/bookings/new} : @{/register}">Get started <span aria-hidden="true">→</span></a>
+    </section>
+</main>
+<footer class="site-footer">
+    <p><strong>Serendib Ride</strong> · Thoughtful rides, from here to there.</p>
+    <p>© Serendib Ride</p>
+</footer>
+</body>
+</html>

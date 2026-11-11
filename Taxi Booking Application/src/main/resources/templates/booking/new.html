@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Plan a ride | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css">
+    <script defer src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+    <script defer th:src="@{/js/fare-estimator.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell booking-page">
+    <a class="back-link" th:href="@{/bookings}">← My rides</a>
+    <section class="booking-intro">
+        <p class="eyebrow" th:text="${bookingId == null} ? 'PLAN YOUR RIDE' : 'UPDATE YOUR RIDE'">PLAN YOUR RIDE</p>
+        <h1 th:text="${bookingId == null} ? 'Where would you like to go?' : 'Update your ride details'">Where would you like to go?</h1>
+        <p>Choose your pickup and destination. Review the route and fare estimate before confirming.</p>
+    </section>
+    <section class="form-card booking-form-card">
+        <form id="booking-form"
+              th:action="${bookingId == null} ? @{/bookings} : @{/bookings/{id}(id=${bookingId})}"
+              th:object="${booking}" method="post">
+            <div class="booking-form-layout">
+                <section class="booking-fields" aria-label="Ride details">
+                    <div class="map-search-grid">
+                        <div class="place-search">
+                            <label for="pickupSearch">Pickup location</label>
+                            <input id="pickupSearch" type="search" autocomplete="off" placeholder="Search or enter an address">
+                            <div id="pickupSuggestions" class="suggestions" role="listbox"></div>
+                        </div>
+                        <div class="place-search">
+                            <label for="destinationSearch">Destination</label>
+                            <input id="destinationSearch" type="search" autocomplete="off" placeholder="Where are you headed?">
+                            <div id="destinationSuggestions" class="suggestions" role="listbox"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label for="pickupAddress">Pickup address</label>
+                            <input id="pickupAddress" th:field="*{pickupAddress}" maxlength="255" autocomplete="street-address" placeholder="Enter your pickup address" required>
+                            <p class="field-error" th:errors="*{pickupAddress}"></p>
+                        </div>
+                        <div>
+                            <label for="destinationAddress">Destination address</label>
+                            <input id="destinationAddress" th:field="*{destinationAddress}" maxlength="255" placeholder="Enter your destination" required>
+                            <p class="field-error" th:errors="*{destinationAddress}"></p>
+                        </div>
+                        <div>
+                            <label for="vehicleCategory">Vehicle category</label>
+                            <select id="vehicleCategory" th:field="*{vehicleCategory}" required>
+                                <option value="">Choose a vehicle</option>
+                                <option th:each="category : ${vehicleCategories}" th:value="${category}" th:text="${#strings.replace(category.name(), '_', ' ')}"></option>
+                            </select>
+                            <p class="field-error" th:errors="*{vehicleCategory}"></p>
+                        </div>
+                        <div>
+                            <label for="bookingTime">Pickup time <span class="muted">(optional)</span></label>
+                            <input id="bookingTime" th:field="*{bookingTime}" type="datetime-local">
+                            <p class="field-error" th:errors="*{bookingTime}"></p>
+                        </div>
+                    </div>
+
+                    <details class="coordinate-details">
+                        <summary>Enter coordinates manually</summary>
+                        <div class="coordinate-grid">
+                            <div class="coordinate-field">
+                                <label for="pickupLatitude">Pickup latitude</label>
+                                <input id="pickupLatitude" th:field="*{pickupLatitude}" type="number" step="any" min="-90" max="90" placeholder="e.g. 6.9271" required>
+                                <p class="field-error" th:errors="*{pickupLatitude}"></p>
+                            </div>
+                            <div class="coordinate-field">
+                                <label for="pickupLongitude">Pickup longitude</label>
+                                <input id="pickupLongitude" th:field="*{pickupLongitude}" type="number" step="any" min="-180" max="180" placeholder="e.g. 79.8612" required>
+                                <p class="field-error" th:errors="*{pickupLongitude}"></p>
+                            </div>
+                            <div class="coordinate-field">
+                                <label for="destinationLatitude">Destination latitude</label>
+                                <input id="destinationLatitude" th:field="*{destinationLatitude}" type="number" step="any" min="-90" max="90" placeholder="e.g. 6.9219" required>
+                                <p class="field-error" th:errors="*{destinationLatitude}"></p>
+                            </div>
+                            <div class="coordinate-field">
+                                <label for="destinationLongitude">Destination longitude</label>
+                                <input id="destinationLongitude" th:field="*{destinationLongitude}" type="number" step="any" min="-180" max="180" placeholder="e.g. 79.8562" required>
+                                <p class="field-error" th:errors="*{destinationLongitude}"></p>
+                            </div>
+                        </div>
+                    </details>
+
+                    <label class="checkbox-row"><input id="peakHour" th:field="*{peakHour}" type="checkbox"> Apply peak-hour fare factor</label>
+                    <div id="fare-estimate" class="estimate-box" aria-live="polite">Add both locations and a vehicle to see your route estimate.</div>
+                    <input id="estimated-route-distance" type="hidden">
+                    <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+                    <div class="form-actions">
+                        <button class="button button-secondary" id="estimate-button" type="button">Calculate route &amp; fare</button>
+                        <button class="button" type="submit">Confirm ride <span aria-hidden="true">→</span></button>
+                    </div>
+                    <p class="disclaimer">Your request is saved for driver matching. A driver is not assigned until confirmed in your ride status.</p>
+                </section>
+
+                <aside class="booking-map-panel" aria-label="Route map">
+                    <div class="map-toolbar">
+                        <span id="map-help" class="muted">Choose locations to preview your route.</span>
+                        <button class="button button-secondary button-small" id="use-map-button" type="button">Set pickup on map</button>
+                    </div>
+                    <div id="booking-map" class="booking-map" role="region" aria-label="Interactive pickup and destination map">
+                        <p id="map-placeholder">Configure GEOAPIFY_API_KEY to enable the map, address search, road routing, and live nearby driver markers.</p>
+                    </div>
+                    <p class="disclaimer">You can search for an address or enter coordinates manually.</p>
+                </aside>
+            </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

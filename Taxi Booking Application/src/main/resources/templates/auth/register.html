@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101828">
+    <title>Create account | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-register">
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="auth-shell">
+    <aside class="auth-promo">
+        <a class="brand auth-promo-brand" th:href="@{/}" aria-label="Serendib Ride home">
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span class="brand-name">Serendib <span>Ride</span></span>
+        </a>
+        <div>
+            <p class="eyebrow">LET'S GET YOU MOVING</p>
+            <h2>Your next great ride starts with a few details.</h2>
+            <p>Set up your account once. Then plan a ride, save your places, and find your trip details whenever you need them.</p>
+            <div class="auth-benefits">
+                <div class="auth-benefit"><span class="proof-check" aria-hidden="true">✓</span> See trip details before you book</div>
+                <div class="auth-benefit"><span class="proof-check" aria-hidden="true">✓</span> Keep your rides together</div>
+            </div>
+        </div>
+        <p class="disclaimer">Your account is yours. Your journey is yours.</p>
+    </aside>
+    <section class="auth-content">
+        <div class="form-card">
+            <p class="eyebrow">PASSENGER ACCOUNT</p>
+            <h1>Create your account</h1>
+            <p class="muted">A few details are all we need to get started.</p>
+            <form th:action="@{/register}" th:object="${registration}" method="post" class="stack-form">
+                <label for="fullName">Full name</label>
+                <input id="fullName" th:field="*{fullName}" autocomplete="name" maxlength="120" required placeholder="Your name">
+                <p class="field-error" th:errors="*{fullName}"></p>
+
+                <label for="email">Email address</label>
+                <input id="email" th:field="*{email}" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
+                <p class="field-error" th:errors="*{email}"></p>
+
+                <label for="phone">Phone number</label>
+                <input id="phone" th:field="*{phone}" type="tel" autocomplete="tel" maxlength="32" required placeholder="+94 77 123 4567">
+                <p class="field-error" th:errors="*{phone}"></p>
+
+                <label for="address">Home address</label>
+                <input id="address" th:field="*{address}" autocomplete="street-address" maxlength="255" required placeholder="Street address">
+                <p class="field-error" th:errors="*{address}"></p>
+
+                <label for="password">Password</label>
+                <input id="password" th:field="*{password}" type="password" autocomplete="new-password" minlength="8" maxlength="72" required placeholder="At least 8 characters">
+                <p class="field-error" th:errors="*{password}"></p>
+
+                <label for="confirmPassword">Confirm password</label>
+                <input id="confirmPassword" th:field="*{confirmPassword}" type="password" autocomplete="new-password" required placeholder="Enter your password again">
+                <p class="field-error" th:errors="*{confirmPassword}"></p>
+                <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+
+                <button class="button button-wide" type="submit">Create account <span aria-hidden="true">→</span></button>
+            </form>
+            <p class="form-footnote">Already registered? <a th:href="@{/login}">Sign in</a>.</p>
+        </div>
+    </section>
+</main>
+</body>
+</html>

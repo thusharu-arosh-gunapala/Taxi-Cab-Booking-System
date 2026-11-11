@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payments | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">PASSENGER</p><h1>Payments</h1><p class="muted">Payment status, receipts, and refund requests for your rides.</p></div>
+        <a class="button button-secondary" th:href="@{/refunds}">Refund requests</a>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section th:if="${#lists.isEmpty(payments)}" class="empty-state">
+        <h2>No payments yet</h2><p>Payment options become available after a trip is completed.</p>
+        <a th:href="@{/bookings}">View my rides</a>
+    </section>
+    <div class="booking-list" th:unless="${#lists.isEmpty(payments)}">
+        <article class="booking-card" th:each="payment : ${payments}">
+            <div class="booking-topline">
+                <strong th:text="${payment.booking.bookingReference}"></strong>
+                <span class="status-pill" th:classappend="${'status-' + #strings.replace(#strings.toLowerCase(payment.status.name()), '_', '-')}"
+                      th:text="${#strings.replace(payment.status.name(), '_', ' ')}"></span>
+            </div>
+            <p th:text="${payment.method.name() == 'CASH' ? 'Cash to driver' : 'Stripe hosted checkout'}"></p>
+            <div class="booking-details">
+                <span th:text="${payment.currency + ' ' + #numbers.formatDecimal(payment.amount, 1, 2)}"></span>
+                <span th:text="${#temporals.format(payment.createdAt, 'd MMM yyyy, HH:mm')}"></span>
+                <a th:href="@{/payments/{reference}(reference=${payment.paymentReference})}">Payment details</a>
+                <a th:if="${payment.receipt != null}" th:href="@{/receipts/{reference}(reference=${payment.receipt.receiptReference})}">Receipt</a>
+            </div>
+            <p class="muted" th:if="${payment.status.name() == 'PENDING'}">
+                <span th:if="${payment.method.name() == 'CASH'}">Awaiting driver confirmation; not yet paid.</span>
+                <span th:if="${payment.method.name() == 'STRIPE_CHECKOUT'}">Awaiting verified Stripe confirmation.</span>
+            </p>
+        </article>
+    </div>
+</main>
+</body>
+</html>

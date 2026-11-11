@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101828">
+    <title>Sign in | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-login">
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="auth-shell">
+    <aside class="auth-promo">
+        <a class="brand auth-promo-brand" th:href="@{/}" aria-label="Serendib Ride home">
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span class="brand-name">Serendib <span>Ride</span></span>
+        </a>
+        <div>
+            <p class="eyebrow">YOUR CITY. YOUR RIDE.</p>
+            <h2>Good to have you back.</h2>
+            <p>Your next ride is only a few moments away. Sign in to pick up right where you left off.</p>
+            <div class="auth-benefits">
+                <div class="auth-benefit"><span class="auth-benefit-icon" aria-hidden="true">01</span> Your rides, all in one place</div>
+                <div class="auth-benefit"><span class="auth-benefit-icon" aria-hidden="true">02</span> Saved places, ready when you are</div>
+            </div>
+        </div>
+        <div class="auth-route-card" aria-hidden="true">
+            <div class="auth-route-map">
+                <span class="auth-route-road auth-route-road-one"></span>
+                <span class="auth-route-road auth-route-road-two"></span>
+                <span class="auth-route-line"></span>
+                <span class="auth-route-pin auth-route-pin-start"></span>
+                <span class="auth-route-pin auth-route-pin-end"></span>
+            </div>
+            <div class="auth-route-caption">
+                <span class="auth-route-icon">↗</span>
+                <span><strong>Made for the way you move</strong><small>Reliable rides, a smoother day.</small></span>
+                <span class="auth-route-arrow">→</span>
+            </div>
+        </div>
+        <p class="disclaimer">A more considered way to get from here to there.</p>
+    </aside>
+    <section class="auth-content">
+        <div class="form-card">
+            <span class="auth-secure-label"><span aria-hidden="true">●</span> SECURE ACCOUNT</span>
+            <h1>Sign in to Serendib Ride</h1>
+            <p class="muted auth-intro">Welcome back. Enter your details to continue.</p>
+            <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+            <p th:if="${param.driver}" class="muted">Driver sign in · Use the email address and password you chose when registering.</p>
+            <div th:if="${param.error}" class="alert alert-error" role="alert">Email or password was not recognised.</div>
+            <form th:action="@{/login}" method="post" class="stack-form">
+                <label for="username">Email address</label>
+                <input id="username" name="username" type="email" autocomplete="username" required maxlength="254" placeholder="you@example.com">
+                <label for="password">Password</label>
+                <div class="auth-password-field">
+                    <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+                    <button class="auth-password-toggle" type="button" aria-controls="password" aria-label="Show password" aria-pressed="false">Show</button>
+                </div>
+                <button class="button button-wide auth-submit" type="submit">Continue <span aria-hidden="true">→</span></button>
+            </form>
+            <p class="muted"><a th:href="@{/driver/forgot-password}">Forgot your driver password?</a></p>
+            <div class="auth-divider"><span>New to Serendib Ride?</span></div>
+            <a class="button button-secondary button-wide auth-create-account" th:href="@{/register}">Create a passenger account</a>
+            <p class="muted">Want to drive with us? <a th:href="@{/driver/register}">Join as a driver</a></p>
+            <p class="muted">Already approved to drive? <a th:href="@{/driver/login}">Driver sign in</a></p>
+            <p class="muted"><a th:href="@{/admin/setup}">Set up the first administrator</a></p>
+        </div>
+    </section>
+</main>
+<script>
+    const passwordInput = document.getElementById("password");
+    const passwordToggle = document.querySelector(".auth-password-toggle");
+    passwordToggle.addEventListener("click", () => {
+        const isVisible = passwordInput.type === "text";
+        passwordInput.type = isVisible ? "password" : "text";
+        passwordToggle.textContent = isVisible ? "Show" : "Hide";
+        passwordToggle.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
+        passwordToggle.setAttribute("aria-pressed", String(!isVisible));
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bookings | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading"><div><p class="eyebrow">OPERATIONS / RIDES</p><h1>Bookings</h1><p>Read-only overview of ride requests and their current status.</p></div>
+        <a class="button button-secondary" th:href="@{/admin}">Admin overview</a></div>
+    <section class="empty-state" th:if="${#lists.isEmpty(bookings)}"><h2>No bookings yet</h2><p>Customer ride requests will appear here.</p></section>
+    <div class="admin-record-list" th:unless="${#lists.isEmpty(bookings)}">
+        <article class="admin-record" th:each="booking : ${bookings}">
+            <div class="record-avatar" aria-hidden="true">R</div>
+            <div class="record-main">
+                <div class="record-title"><h2 th:text="${booking.bookingReference}"></h2>
+                    <span class="status-pill" th:text="${#strings.replace(booking.status.name(), '_', ' ')}"></span></div>
+                <p th:text="${booking.passenger.fullName + ' · ' + booking.passenger.email}"></p>
+                <p th:text="${booking.pickupAddress + ' → ' + booking.destinationAddress}"></p>
+                <p class="record-meta" th:text="${booking.vehicleCategory + ' · ' + booking.estimatedFare + ' ' + booking.fareCurrency + ' · ' + #temporals.format(booking.createdAt, 'd MMM yyyy HH:mm')}"></p>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

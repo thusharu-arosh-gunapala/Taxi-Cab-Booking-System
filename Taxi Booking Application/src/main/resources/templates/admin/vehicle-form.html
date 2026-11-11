@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${vehicleId == null} ? 'Add vehicle | Serendib Ride' : 'Edit vehicle | Serendib Ride'">Vehicle | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="narrow-shell">
+    <a class="back-link" th:href="@{/admin/vehicles}">← Vehicle management</a>
+    <section class="form-card">
+        <p class="eyebrow">OPERATIONS / FLEET</p>
+        <h1 th:text="${vehicleId == null} ? 'Add a vehicle' : 'Edit vehicle'">Add a vehicle</h1>
+        <p class="muted">Only verified drivers can be assigned to fleet vehicles.</p>
+        <form th:action="${vehicleId == null} ? @{/admin/vehicles} : @{/admin/vehicles/{id}(id=${vehicleId})}"
+              th:object="${vehicleForm}" method="post" class="stack-form">
+            <p class="field-error" th:if="${#fields.hasGlobalErrors()}" th:each="error : ${#fields.globalErrors()}" th:text="${error}"></p>
+            <label for="category">Vehicle category</label>
+            <select id="category" th:field="*{category}" required>
+                <option value="">Choose category</option>
+                <option th:each="category : ${vehicleCategories}" th:value="${category}" th:text="${#strings.replace(category.name(), '_', ' ')}"></option>
+            </select>
+            <p class="field-error" th:errors="*{category}"></p>
+            <label for="model">Make and model</label><input id="model" th:field="*{model}" maxlength="120" required placeholder="e.g. Toyota Prius">
+            <p class="field-error" th:errors="*{model}"></p>
+            <label for="plateNumber">Registration plate</label><input id="plateNumber" th:field="*{plateNumber}" maxlength="20" required placeholder="e.g. ABC-1234">
+            <p class="field-error" th:errors="*{plateNumber}"></p>
+            <label for="color">Color</label><input id="color" th:field="*{color}" maxlength="40" required placeholder="e.g. Silver">
+            <p class="field-error" th:errors="*{color}"></p>
+            <label for="driverId">Assigned verified driver <span class="muted">(optional)</span></label>
+            <select id="driverId" th:field="*{driverId}">
+                <option value="">Do not assign yet</option>
+                <option th:each="driver : ${drivers}" th:value="${driver.id}" th:text="${driver.name + ' · ' + driver.phone}"></option>
+            </select>
+            <p th:if="${#lists.isEmpty(drivers)}" class="muted">No verified drivers yet. You can save the vehicle and assign it later.</p>
+            <div class="form-actions">
+                <button class="button" type="submit" th:text="${vehicleId == null} ? 'Add to fleet' : 'Save vehicle'"></button>
+                <a class="button button-secondary" th:href="@{/admin/vehicles}">Cancel</a>
+            </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

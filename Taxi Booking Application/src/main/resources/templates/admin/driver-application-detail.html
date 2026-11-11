@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Driver application | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">OPERATIONS / DRIVER APPLICATIONS</p>
+            <h1 th:text="${driverApplication.name}">Driver application</h1>
+            <p th:text="${driverApplication.applicationStatus}">PENDING</p>
+        </div>
+        <a class="button button-secondary" th:href="@{/admin/drivers}">Back to applications</a>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section class="panel">
+        <h2>Applicant details</h2>
+        <dl class="detail-grid">
+            <dt>Email</dt><dd th:text="${driverApplication.email}"></dd>
+            <dt>Phone</dt><dd th:text="${driverApplication.phone}"></dd>
+            <dt>NIC</dt><dd th:text="${driverApplication.nicNumber}"></dd>
+            <dt>Date of birth</dt><dd th:if="${driverApplication.dateOfBirth != null}" th:text="${#temporals.format(driverApplication.dateOfBirth, 'd MMM yyyy')}"></dd>
+            <dt>Address</dt><dd th:text="${driverApplication.address}"></dd>
+            <dt>Driving licence</dt><dd th:text="${driverApplication.licenseNumber}"></dd>
+            <dt>Licence expires</dt><dd th:text="${#temporals.format(driverApplication.licenseExpiryDate, 'd MMM yyyy')}"></dd>
+            <dt>Application received</dt><dd th:text="${#temporals.format(driverApplication.createdAt, 'd MMM yyyy')}"></dd>
+            <dt th:if="${driverApplication.rejectionReason != null}">Rejection reason</dt>
+            <dd th:if="${driverApplication.rejectionReason != null}" th:text="${driverApplication.rejectionReason}"></dd>
+            <dt th:if="${driverApplication.approvedAt != null}">Approved at</dt>
+            <dd th:if="${driverApplication.approvedAt != null}" th:text="${#temporals.format(driverApplication.approvedAt, 'd MMM yyyy HH:mm')}"></dd>
+            <dt th:if="${driverApplication.approvedByAdminId != null}">Approved by admin ID</dt>
+            <dd th:if="${driverApplication.approvedByAdminId != null}" th:text="${driverApplication.approvedByAdminId}"></dd>
+        </dl>
+        <div class="form-actions">
+            <a class="button button-secondary" th:href="@{/admin/drivers/{id}/documents/profile(id=${driverApplication.id})}"
+               target="_blank" rel="noopener">View profile photo</a>
+            <a class="button button-secondary" th:href="@{/admin/drivers/{id}/documents/license(id=${driverApplication.id})}"
+               target="_blank" rel="noopener">View licence image</a>
+        </div>
+    </section>
+    <section class="panel" th:each="vehicle : ${vehicles}">
+        <h2>Vehicle details</h2>
+        <dl class="detail-grid">
+            <dt>Type</dt><dd th:text="${vehicle.category}"></dd>
+            <dt>Make and model</dt><dd th:text="${vehicle.brand + ' ' + vehicle.model}"></dd>
+            <dt>Year</dt><dd th:text="${vehicle.manufacturingYear}"></dd>
+            <dt>Registration</dt><dd th:text="${vehicle.plateNumber}"></dd>
+            <dt>Colour</dt><dd th:text="${vehicle.color}"></dd>
+        </dl>
+        <a class="button button-secondary" th:href="@{/admin/drivers/{id}/documents/vehicle(id=${driverApplication.id})}"
+           target="_blank" rel="noopener">View vehicle photo</a>
+        <a class="button button-secondary" th:href="@{/admin/drivers/{id}/documents/registration(id=${driverApplication.id})}"
+           target="_blank" rel="noopener">View registration document</a>
+    </section>
+    <section class="panel" th:if="${driverApplication.applicationStatus.name() == 'PENDING'}">
+        <h2>Review decision</h2>
+        <div class="form-actions">
+            <form th:action="@{/admin/drivers/{id}/approve(id=${driverApplication.id})}" method="post">
+                <button class="button" type="submit">Approve driver</button>
+            </form>
+        </div>
+        <form th:action="@{/admin/drivers/{id}/reject(id=${driverApplication.id})}" method="post" class="stack-form">
+            <label for="reason">Rejection reason shown to the driver</label>
+            <textarea id="reason" name="reason" maxlength="1000" required></textarea>
+            <button class="button button-secondary" type="submit">Reject application</button>
+        </form>
+        <form th:action="@{/admin/drivers/{id}/resubmission(id=${driverApplication.id})}" method="post" class="stack-form">
+            <label for="correctionReason">Request corrections and resubmission</label>
+            <textarea id="correctionReason" name="reason" maxlength="1000" required></textarea>
+            <button class="button button-secondary" type="submit">Request corrections</button>
+        </form>
+    </section>
+    <section class="panel" th:if="${driverApplication.applicationStatus.name() == 'APPROVED'}">
+        <h2>Driver account</h2>
+        <p th:text="${driverApplication.suspended ? 'This account is suspended and cannot receive jobs.' : 'This account is active.'}"></p>
+        <form th:action="@{/admin/drivers/{id}/suspension(id=${driverApplication.id})}" method="post">
+            <input type="hidden" name="suspended" th:value="${!driverApplication.suspended}">
+            <button class="button button-secondary" type="submit"
+                    th:text="${driverApplication.suspended ? 'Reactivate driver' : 'Suspend driver'}"></button>
+        </form>
+    </section>
+    <section class="panel">
+        <h2>Internal notes</h2>
+        <form th:action="@{/admin/drivers/{id}/notes(id=${driverApplication.id})}" method="post" class="stack-form">
+            <label for="notes">Notes (visible to administrators only)</label>
+            <textarea id="notes" name="notes" maxlength="4000" th:text="${driverApplication.internalNotes}"></textarea>
+            <button class="button button-secondary" type="submit">Save notes</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

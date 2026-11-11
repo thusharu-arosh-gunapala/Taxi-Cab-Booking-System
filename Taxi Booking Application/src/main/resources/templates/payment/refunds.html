@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Refund requests | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading"><div><p class="eyebrow">PASSENGER</p><h1>Refund requests</h1><p class="muted">Track your submitted requests. Refunds are not automatic.</p></div></div>
+    <section th:if="${#lists.isEmpty(refunds)}" class="empty-state">
+        <h2>No refund requests</h2><p>Requests you submit for settled payments will appear here.</p>
+        <a th:href="@{/payments}">View payments</a>
+    </section>
+    <div class="booking-list" th:unless="${#lists.isEmpty(refunds)}">
+        <article class="booking-card" th:each="refund : ${refunds}">
+            <div class="booking-topline">
+                <strong th:text="${refund.refundReference}"></strong>
+                <span class="status-pill" th:classappend="${'status-' + #strings.replace(#strings.toLowerCase(refund.status.name()), '_', '-')}"
+                      th:text="${#strings.replace(refund.status.name(), '_', ' ')}"></span>
+            </div>
+            <p th:text="${'Booking ' + refund.payment.booking.bookingReference}"></p>
+            <p th:text="${'Requested amount: ' + refund.payment.currency + ' ' + #numbers.formatDecimal(refund.amount, 1, 2)}"></p>
+            <p th:text="${refund.reason}"></p>
+        </article>
+    </div>
+</main>
+</body>
+</html>

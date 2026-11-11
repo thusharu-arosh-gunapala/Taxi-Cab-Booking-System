@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vehicle fleet | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">OPERATIONS / FLEET</p><h1>Vehicle management</h1><p>Keep vehicle categories, registrations, driver assignments, and availability current.</p></div>
+        <div class="form-actions"><a class="button button-secondary" th:href="@{/admin}">Overview</a><a class="button" th:href="@{/admin/vehicles/new}">Add vehicle</a></div>
+    </div>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section th:if="${#lists.isEmpty(vehicles)}" class="empty-state">
+        <h2>Your fleet starts here</h2><p>Add vehicles and assign them to verified drivers.</p>
+        <a class="button" th:href="@{/admin/vehicles/new}">Add a vehicle</a>
+    </section>
+    <div class="admin-record-list" th:unless="${#lists.isEmpty(vehicles)}">
+        <article class="admin-record" th:each="vehicle : ${vehicles}">
+            <div class="vehicle-avatar" aria-hidden="true">↗</div>
+            <div class="record-main">
+                <div class="record-title">
+                    <h2 th:text="${vehicle.model}"></h2>
+                    <span class="status-pill" th:classappend="${vehicle.available ? 'status-approved' : 'status-pending'}"
+                          th:text="${vehicle.available ? 'Available' : 'Unavailable'}"></span>
+                </div>
+                <p th:text="${#strings.replace(vehicle.category.name(), '_', ' ') + ' · ' + vehicle.color + ' · ' + vehicle.plateNumber}"></p>
+                <p class="record-meta" th:text="${vehicle.driver == null ? 'No driver assigned' : 'Driver: ' + vehicle.driver.name + (vehicle.driver.online ? ' · Online' : ' · Offline')}"></p>
+            </div>
+            <div class="record-actions">
+                <form th:action="@{/admin/vehicles/{id}/availability(id=${vehicle.id})}" method="post">
+                    <button class="button button-small button-secondary" type="submit"
+                            th:text="${vehicle.available ? 'Mark unavailable' : 'Mark available'}"></button>
+                </form>
+                <a class="button button-small button-quiet" th:href="@{/admin/vehicles/{id}/edit(id=${vehicle.id})}">Edit</a>
+                <form th:action="@{/admin/vehicles/{id}/delete(id=${vehicle.id})}" method="post"
+                      onsubmit="return confirm('Remove this vehicle from the fleet?');">
+                    <button class="text-danger" type="submit">Delete</button>
+                </form>
+            </div>
+        </article>
+    </div>
+</main>
+</body>
+</html>

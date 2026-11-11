@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header class="site-header" th:fragment="navigation">
+    <a class="brand" th:href="${admin} ? @{/admin} : @{/}" aria-label="Serendib Ride home">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span class="brand-name">Serendib <span>Ride</span></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+        <a th:if="${signedIn and !admin and !driver}" th:href="@{/bookings}">My rides</a>
+        <a th:if="${signedIn and !admin and !driver}" th:href="@{/passenger/favourites}">Saved places</a>
+        <a th:if="${signedIn and !admin and !driver}" th:href="@{/trips}">Trip history</a>
+        <a th:if="${signedIn and !admin and !driver}" th:href="@{/payments}">Payments</a>
+        <a th:if="${signedIn and driver}" th:href="@{/driver/dashboard}">Driver portal</a>
+        <a th:if="${!signedIn}" th:href="@{/driver/register}">Join as Driver</a>
+        <a th:if="${signedIn and driver}" th:href="@{/driver/jobs}">Available jobs</a>
+        <a th:if="${signedIn and driver}" th:href="@{/driver/trips}">My trips</a>
+        <a th:if="${admin}" th:href="@{/admin}">Admin panel</a>
+        <span th:if="${signedIn}" class="nav-account" th:text="${currentUser}" th:title="${currentUser}"></span>
+        <a th:if="${!signedIn}" th:href="@{/login}">Sign in</a>
+        <a th:if="${!signedIn}" class="button button-small" th:href="@{/register}">Create account</a>
+        <form th:if="${signedIn}" th:action="@{/logout}" method="post">
+            <button class="link-button" type="submit">Sign out</button>
+        </form>
+    </nav>
+</header>
+</body>
+</html>

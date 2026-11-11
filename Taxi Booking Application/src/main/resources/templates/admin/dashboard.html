@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fleet management | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <div class="page-heading">
+        <div><p class="eyebrow">OPERATIONS</p><h1>Admin panel</h1><p>Manage customers, rides, payments, driver applications, and fleet operations.</p></div>
+        <a class="button button-secondary" th:href="@{/admin/drivers}">Manage drivers</a>
+    </div>
+    <section class="admin-metrics" aria-label="Site operations">
+        <article class="metric-card"><span>Customer accounts</span><strong th:text="${passengerCount}">0</strong><small>Registered passenger accounts</small></article>
+        <article class="metric-card"><span>Bookings</span><strong th:text="${bookingCount}">0</strong><small>All ride requests</small></article>
+        <article class="metric-card"><span>Payments</span><strong th:text="${paymentCount}">0</strong><small>Recorded payment attempts</small></article>
+        <article class="metric-card"><span>Refunds to review</span><strong th:text="${refundCount}">0</strong><small>Requests awaiting manual review</small></article>
+        <article class="metric-card"><span>Pending verification</span><strong th:text="${pendingDrivers}">0</strong><small>Driver applications awaiting review</small></article>
+        <article class="metric-card"><span>Verified drivers</span><strong th:text="${approvedDrivers}">0</strong><small>Approved to join the fleet</small></article>
+        <article class="metric-card"><span>Online drivers</span><strong th:text="${onlineDrivers}">0</strong><small>Currently marked available</small></article>
+        <article class="metric-card"><span>Available vehicles</span><strong th:text="${availableVehicles}">0</strong><small>Vehicles marked ready</small></article>
+    </section>
+    <section class="admin-shortcuts">
+        <a class="admin-shortcut" th:href="@{/admin/passengers}">
+            <span class="shortcut-icon" aria-hidden="true">03</span>
+            <span><strong>Customer accounts</strong><small>Review customer contact details and registration information.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <a class="admin-shortcut" th:href="@{/admin/operators}">
+            <span class="shortcut-icon" aria-hidden="true">07</span>
+            <span><strong>Administrator operators</strong><small>Create and manage separate website operator accounts.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <a class="admin-shortcut" th:href="@{/admin/bookings}">
+            <span class="shortcut-icon" aria-hidden="true">04</span>
+            <span><strong>Bookings</strong><small>Review ride requests, their status, and route details.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <a class="admin-shortcut" th:href="@{/admin/payments}">
+            <span class="shortcut-icon" aria-hidden="true">05</span>
+            <span><strong>Payments</strong><small>Inspect payment status and references without exposing credentials.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <a class="admin-shortcut" th:href="@{/admin/refunds}">
+            <span class="shortcut-icon" aria-hidden="true">06</span>
+            <span><strong>Refund requests</strong><small>Review customer requests; processing is not automated.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <a class="admin-shortcut" th:href="@{/admin/drivers}">
+            <span class="shortcut-icon" aria-hidden="true">01</span>
+            <span><strong>Driver applications</strong><small>Review details, verify drivers, and update online status.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <a class="admin-shortcut" th:href="@{/admin/vehicles}">
+            <span class="shortcut-icon" aria-hidden="true">02</span>
+            <span><strong>Vehicle fleet</strong><small>Register vehicles, assign verified drivers, and manage availability.</small></span>
+            <span aria-hidden="true">→</span>
+        </a>
+    </section>
+</main>
+</body>
+</html>

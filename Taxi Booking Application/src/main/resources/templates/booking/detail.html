@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Booking details | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/booking-status.js}"></script>
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <a class="back-link" th:href="@{/bookings}">← My rides</a>
+    <div th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}"></div>
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+    <section class="form-card wide-card">
+        <div class="page-heading">
+            <div><p class="eyebrow">BOOKING DETAILS</p><h1 th:text="${booking.bookingReference}"></h1></div>
+            <span id="booking-status" class="status-pill"
+                  th:classappend="${'status-' + #strings.replace(#strings.toLowerCase(booking.status.name()), '_', '-')}"
+                  th:text="${#strings.replace(booking.status.name(), '_', ' ')}"></span>
+        </div>
+        <p id="booking-status-message" class="muted" aria-live="polite">Booking status updates appear here automatically.</p>
+        <div class="detail-grid">
+            <div><span class="eyebrow">PICKUP</span><p th:text="${booking.pickupAddress}"></p></div>
+            <div><span class="eyebrow">DESTINATION</span><p th:text="${booking.destinationAddress}"></p></div>
+            <div><span class="eyebrow">VEHICLE</span><p th:text="${#strings.replace(booking.vehicleCategory.name(), '_', ' ')}"></p></div>
+            <div><span class="eyebrow">SCHEDULED</span><p th:text="${#temporals.format(booking.bookingTime, 'd MMM yyyy, HH:mm')}"></p></div>
+            <div><span class="eyebrow">ROAD DISTANCE</span><p th:text="${booking.estimatedDistanceKm} + ' km'"></p></div>
+            <div><span class="eyebrow">TRAVEL TIME</span><p th:text="${booking.estimatedDurationMinutes} + ' min'"></p></div>
+            <div><span class="eyebrow">ESTIMATED FARE</span><p th:text="${booking.fareCurrency + ' ' + #numbers.formatDecimal(booking.estimatedFare, 1, 2)}"></p></div>
+            <div th:if="${booking.assignedDriverReference != null}"><span class="eyebrow">DRIVER REFERENCE</span><p th:text="${booking.assignedDriverReference}"></p></div>
+        </div>
+        <div class="form-actions">
+            <a th:if="${booking.status.name() == 'PENDING'}" class="button button-secondary"
+               th:href="@{/bookings/{id}/edit(id=${booking.id})}">Edit booking</a>
+            <a th:if="${booking.status.name() == 'COMPLETED'}" class="button button-secondary"
+               th:href="@{/bookings/{id}/payment(id=${booking.id})}">Payment status / options</a>
+        </div>
+        <form th:if="${booking.status.name() == 'PENDING' or booking.status.name() == 'SEARCHING_FOR_DRIVER' or booking.status.name() == 'DRIVER_ASSIGNED' or booking.status.name() == 'REJECTED' or booking.status.name() == 'NO_DRIVER_AVAILABLE'}"
+              th:action="@{/bookings/{id}/cancel(id=${booking.id})}" th:object="${cancellation}" method="post" class="stack-form cancel-form">
+            <label for="cancellation-reason">Cancellation reason</label>
+            <textarea id="cancellation-reason" th:field="*{reason}" maxlength="500" required></textarea>
+            <p class="field-error" th:errors="*{reason}"></p>
+            <button class="text-danger" type="submit">Cancel this booking</button>
+        </form>
+        <p class="muted" th:if="${booking.cancellationReason != null}"
+           th:text="${'Cancellation reason: ' + booking.cancellationReason}"></p>
+    </section>
+</main>
+<script th:inline="javascript">
+    window.bookingEventsUrl = /*[[@{/api/bookings/{id}/events(id=${booking.id})}]]*/ "";
+</script>
+</body>
+</html>

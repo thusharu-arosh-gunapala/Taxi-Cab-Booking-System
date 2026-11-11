@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Application received | Serendib Ride</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments/nav :: navigation}"></header>
+<main class="content-shell">
+    <section class="form-card">
+        <span class="success-icon" aria-hidden="true">✓</span>
+        <p class="eyebrow">APPLICATION RECEIVED</p>
+        <h1>Thank you for applying.</h1>
+        <p class="muted">Your driver application and documents have been submitted securely. You can sign in any time to check its review status.</p>
+        <a class="button" th:href="@{/driver/status}">View application status</a>
+    </section>
+</main>
+</body>
+</html>
