@@ -1,0 +1,10 @@
+PAY-1001|BK-7788|PASS-405|55.0|CARD|REFUNDED|2026-11-07 06:35:40|Card authorized successfully via Gateway. Card: **** **** **** 6789   Refund approved on 2026-11-09 07:03:05|**** **** **** 6789|Sarah Connor|12/28
+PAY-1002|BK-9001|PASS-405|55.0|ONLINE|PAID|2026-11-07 06:36:54|Digital payment settled via Google Pay (Ref: passenger@okaxis)|Google Pay|passenger@okaxis
+PAY-1003|BK-9002|PASS-405|40.0|CARD|FAILED|2026-11-07 06:50:35|Payment Failed: Card number must be 13 to 19 digits.|**** **** **** 4040|Sarah Connor|12/28
+PAY-1004|BK-9002|PASS-405|40.0|CARD|PAID|2026-11-07 06:51:13|Card authorized successfully via Gateway. Card: **** **** **** 6789|**** **** **** 6789|RIsith Nemitha|12/10
+PAY-1005|BK-7788|PASS-405|40.0|CASH|PAID|2026-11-10 21:41:24|Cash received: $40.00. Change given: $0.00|40.0|0.0
+PAY-1006|BK-9003|PASS-405|40.0|CASH|PAID|2026-11-10 21:43:35|Cash received: $45.00. Change given: $5.00|45.0|5.0
+PAY-1007|BK-9004|PASS-405|40.0|CARD|PAID|2026-11-10 21:46:20|Card authorized successfully via Gateway. Card: **** **** **** 6789|**** **** **** 6789|Sarah Connor|12/28
+PAY-1008|BK-9005|PASS-405|40.0|CASH|PAID|2026-11-10 21:59:30|Cash received: $40.00. Change given: $0.00|40.0|0.0
+PAY-1009|BK-9006|PASS-405|40.0|CASH|PAID|2026-11-10 22:00:29|Cash received: $40.00. Change given: $0.00|40.0|0.0
+PAY-1010|BK-9007|PASS-405|36.0|CASH|PAID|2026-11-10 22:14:50|Cash received: $40.00. Change given: $4.00|40.0|4.0

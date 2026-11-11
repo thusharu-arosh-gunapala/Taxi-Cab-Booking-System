@@ -1,0 +1,13 @@
+PAY-1001|BK-501|PASS-201|35.0|CASH|REFUNDED|2026-10-09 21:28:46|Cash received: $40.00. Change given: $5.00   Refund of $35.0 processed on 2026-10-09 21:55:51|40.0|5.0
+PAY-1002|BK-502|PASS-202|48.5|CARD|PAID|2026-10-09 21:28:46|Card authorized successfully via Gateway. Card: **** **** **** 5566 (Holder: Sarah Connor)|**** **** **** 5566|Sarah Connor|08/28|321
+PAY-1003|BK-503|PASS-203|22.0|ONLINE|PAID|2026-10-09 21:28:46|Digital payment settled via Google Pay (Ref: gpay-ref-998822)|Google Pay|gpay-ref-998822
+PAY-FAIL-1|BK-FAIL-1|PASS-FAIL|50.0|CASH|FAILED|2026-10-09 21:28:48|Payment Failed: Insufficient cash tendered. Short by $30.00|20.0|0.0
+PAY-LIFECYCLE-1|BK-LIFE-1|PASS-LIFE|50.0|CASH|REFUNDED|2026-10-09 21:28:49|Cash received: $50.00. Change given: $0.00   Refund of $50.0 processed on 2026-10-09 21:28:49|50.0|0.0
+PAY-1006|BK-DEMO-99|PASS-DEMO-99|40.0|CASH|REFUNDED|2026-10-09 21:34:52|Cash received: $60.00. Change given: $20.00   Refund of $40.0 processed on 2026-10-09 21:37:10|60.0|20.0
+PAY-1007|BK-7788|PASS-405|55.0|CASH|REFUNDED|2026-10-09 22:13:14|Cash received: $55.00. Change given: $0.00   Refund approved on 2026-10-09 22:48:49|55.0|0.0
+PAY-1008|BK-7788|PASS-405|55.0|ONLINE|PAID|2026-10-09 22:13:49|Digital payment settled via Google Pay (Ref: passenger@okaxis)|Google Pay|passenger@okaxis
+PAY-1009|BK-SIMPLIFIED-1|PASS-SIMPLIFIED-1|48.0|CARD|PAID|2026-10-09 22:48:49|Card authorized successfully via Gateway. Card: **** **** **** 3333|**** **** **** 3333|Alex Murphy|10/28|789
+PAY-1010|BK-7788|PASS-405|55.0|CARD|PAID|2026-10-10 00:37:57|Card authorized successfully via Gateway. Card: **** **** **** 6789|**** **** **** 6789|Sarah Connor|12/28|123
+PAY-1011|BK-7788|PASS-405|55.0|CASH|FAILED|2026-10-10 00:38:15|Payment Failed: Insufficient cash tendered. Short by $27.50|27.5|0.0
+PAY-1012|BK-7788|PASS-405|55.0|CASH|PAID|2026-10-10 00:38:35|Cash received: $55.00. Change given: $0.00|55.0|0.0
+PAY-1013|BK-7788|PASS-405|55.0|CASH|PAID|2026-10-10 11:58:31|Cash received: $60.00. Change given: $5.00|60.0|5.0

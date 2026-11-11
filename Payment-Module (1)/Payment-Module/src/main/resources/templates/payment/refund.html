@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refund Management | Cab Booking System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<nav class="navbar">
+    <a th:href="@{/payment}" class="brand">
+        🚖 <span>RideFlow</span>
+    </a>
+    <ul class="nav-links">
+        <li><a th:href="@{/payment}">💳 Payment</a></li>
+        <li><a th:href="@{/payment/history}">📋 Payment History</a></li>
+        <li><a th:href="@{/promotions}">🎟️ Promotions</a></li>
+        <li><a th:href="@{/receipts}">🧾 Receipts</a></li>
+        <li><a th:href="@{/refunds}" class="active">🔄 Refunds</a></li>
+    </ul>
+</nav>
+
+<div class="container">
+
+    <!-- Flash Notifications -->
+    <div th:if="${successMessage}" class="alert alert-success">
+        <span th:text="${successMessage}">Refund operation succeeded!</span>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-error">
+        <span th:text="${errorMessage}">Refund operation failed.</span>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">🔄 Refund Simulation & Management</h1>
+            <p class="page-subtitle">Simulated Flow: <code>PAID ➔ REFUND REQUEST (REQUESTED) ➔ REFUNDED</code>. Stored in <code>refunds.txt</code>.</p>
+        </div>
+    </div>
+
+    <!-- Refund Lifecycle Visual Banner -->
+    <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #ffffff; padding: 1.25rem 1.5rem;">
+        <div style="display: flex; justify-content: space-around; align-items: center; text-align: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <span class="badge badge-paid" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">1. PAID</span>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem;">Fare settled by passenger</div>
+            </div>
+            <div style="font-size: 1.5rem; color: var(--accent);">➔</div>
+            <div>
+                <span class="badge badge-pending" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">2. REFUND REQUEST</span>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem;">Submitted with reason</div>
+            </div>
+            <div style="font-size: 1.5rem; color: var(--accent);">➔</div>
+            <div>
+                <span class="badge badge-refunded" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">3. REFUNDED</span>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem;">Approved & Synchronized</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+
+        <!-- Left: Submit Refund Request Form -->
+        <div>
+            <div class="card">
+                <h2 class="card-title">📝 Submit New Refund Request</h2>
+                <form th:action="@{/refunds/request}" method="post">
+                    <div class="form-group">
+                        <label class="form-label" for="paymentId">Eligible Settled Payment:</label>
+                        <select name="paymentId" id="paymentId" class="form-control" required>
+                            <option value="" disabled th:selected="${preselectedPaymentId == null}">-- Select a PAID Payment --</option>
+                            <option th:each="p : ${paidPayments}"
+                                    th:value="${p.paymentId}"
+                                    th:selected="${p.paymentId == preselectedPaymentId}"
+                                    th:text="${p.paymentId} + ' (Booking: ' + ${p.bookingId} + ' - $' + ${#numbers.formatDecimal(p.amount, 1, 2)} + ' via ' + ${p.paymentMethod} + ')'">
+                                PAY-1001
+                            </option>
+                        </select>
+                        <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">
+                            Rule: Only payments currently in <code>PAID</code> status are eligible for refund.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="reason">Reason for Refund Claim:</label>
+                        <textarea name="reason" id="reason" rows="3" class="form-control"
+                                  placeholder="e.g. Driver took incorrect route, mechanical breakdown, or overcharged fare." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        Submit Refund Request ➔
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right: Status Transition Rules Explainer -->
+        <div>
+            <div class="card">
+                <h2 class="card-title">⚖️ Refund Rules & Audit Safeguards</h2>
+                <div style="font-size: 0.95rem; line-height: 1.7; color: var(--text-main);">
+                    <ul style="padding-left: 1.25rem;">
+                        <li style="margin-bottom: 0.75rem;">
+                            <strong>Eligibility Check:</strong> Transactions with status <code>PENDING</code> or <code>FAILED</code> cannot be refunded.
+                        </li>
+                        <li style="margin-bottom: 0.75rem;">
+                            <strong>Duplicate Prevention:</strong> Prevents multiple concurrent refund requests for the same payment.
+                        </li>
+                        <li style="margin-bottom: 0.75rem;">
+                            <strong>Cross-File State Synchronization:</strong> Approving a refund automatically changes:
+                            <br>• <code>refunds.txt</code> status to <code>REFUNDED</code>
+                            <br>• <code>payments.txt</code> status to <code>REFUNDED</code>
+                            <br>• <code>receipts.txt</code> status to <code>REFUNDED</code>
+                        </li>
+                        <li>
+                            <strong>Permanent Audit Trail:</strong> Timestamp and reason are permanently preserved in the data files.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Table of all Refund Records -->
+    <div class="card">
+        <h2 class="card-title">📁 All Refund Claims in refunds.txt</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Refund ID</th>
+                    <th>Payment ID</th>
+                    <th>Booking ID</th>
+                    <th>Refund Amount</th>
+                    <th>Reason</th>
+                    <th>Request Date</th>
+                    <th>Processed Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(refunds)}">
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        No refund records found in refunds.txt.
+                    </td>
+                </tr>
+                <tr th:each="r : ${refunds}">
+                    <td><strong th:text="${r.refundId}" style="font-family: monospace;">REF-9001</strong></td>
+                    <td>
+                        <a th:href="@{'/payment/history'}" th:text="${r.paymentId}" style="color: var(--primary); font-weight: 600;">PAY-1001</a>
+                    </td>
+                    <td th:text="${r.bookingId}">BK-501</td>
+                    <td><strong>$<span th:text="${#numbers.formatDecimal(r.refundAmount, 1, 2)}">35.00</span></strong></td>
+                    <td style="font-size: 0.85rem; max-width: 200px;" th:text="${r.reason}">Reason</td>
+                    <td style="font-size: 0.85rem; color: var(--text-muted);" th:text="${r.requestDate}">Date</td>
+                    <td style="font-size: 0.85rem; color: var(--text-muted);" th:text="${r.processedDate}">Pending</td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${r.refundStatus == 'REFUNDED' ? 'badge-refunded' : (r.refundStatus == 'REQUESTED' ? 'badge-pending' : 'badge-failed')}"
+                              th:text="${r.refundStatus}">REQUESTED</span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.35rem; align-items: center;">
+                            <!-- Approve button if REQUESTED -->
+                            <form th:if="${r.refundStatus == 'REQUESTED'}" th:action="@{/refunds/process}" method="post" style="display: inline-block;">
+                                <input type="hidden" name="refundId" th:value="${r.refundId}">
+                                <input type="hidden" name="approve" value="true">
+                                <button type="submit" class="btn btn-success btn-sm" title="Approve Refund">✅ Approve</button>
+                            </form>
+
+                            <!-- Reject button if REQUESTED -->
+                            <form th:if="${r.refundStatus == 'REQUESTED'}" th:action="@{/refunds/process}" method="post" style="display: inline-block;">
+                                <input type="hidden" name="refundId" th:value="${r.refundId}">
+                                <input type="hidden" name="approve" value="false">
+                                <button type="submit" class="btn btn-outline btn-sm" title="Reject Refund" style="color: var(--danger);">❌ Reject</button>
+                            </form>
+
+                            <!-- Delete button -->
+                            <form th:action="@{'/refunds/delete/' + ${r.refundId}}" method="post"
+                                  onsubmit="return confirm('Delete this refund record from refunds.txt?');"
+                                  style="display: inline-block;">
+                                <button type="submit" class="btn btn-danger btn-sm" title="Delete record">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
